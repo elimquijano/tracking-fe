@@ -1,303 +1,839 @@
-import React, { useState, useEffect } from 'react';
+import * as React from "react";
+import { useEffect, useState, useContext } from "react";
+import L from "leaflet";
+import "leaflet-rotatedmarker";
+import "leaflet/dist/leaflet.css";
 import {
-  Box,
-  Grid,
-  Card,
-  CardContent,
-  Typography,
+  MapContainer,
+  LayersControl,
+  TileLayer,
+  ZoomControl,
+  Marker,
+  Polygon,
+  Polyline,
+} from "react-leaflet";
+import {
+  Paper,
+  Table,
+  TableBody,
+  TableCell,
+  TableContainer,
+  TableRow,
   Button,
-  LinearProgress,
-  Chip,
-  useTheme,
-  alpha,
+  InputAdornment,
+  TextField,
+  Typography,
+  Box,
+  Autocomplete,
+  Stack,
+  Grid,
+  useMediaQuery,
   CircularProgress,
-} from '@mui/material';
+} from "@mui/material";
 import {
-  TrendingUp,
-  TrendingDown,
-  ShoppingCart,
-  AttachMoney,
-  People,
-} from '@mui/icons-material';
-import {
-  BarChart,
-  Bar,
-  XAxis,
-  YAxis,
-  CartesianGrid,
-  Tooltip,
-  ResponsiveContainer,
-  AreaChart,
-  Area,
-} from 'recharts';
-import { dashboardAPI } from '../utils/api';
+  ArrowBack,
+  Circle,
+  ExpandLess,
+  ExpandMore,
+  Tune,
+} from "@mui/icons-material";
+import { Circle as LeafletCircle } from "react-leaflet";
+import GoogleStreetView from "../components/StreetView";
+import { WebSocketContext } from "../contexts/SocketContext";
+import { IconCircle } from "../components/iconCircle";
+import { getTraccar } from "../utils/common";
+
+// Asegúrate de que los iconos de los marcadores se muestren correctamente
+delete L.Icon.Default.prototype._getIconUrl;
+L.Icon.Default.mergeOptions({
+  iconRetinaUrl: require("leaflet/dist/images/marker-icon-2x.png"),
+  iconUrl: require("leaflet/dist/images/marker-icon.png"),
+  shadowUrl: require("leaflet/dist/images/marker-shadow.png"),
+});
+
+const columns = [{ id: "name", label: "Placa", minWidth: 5, key: 1 }];
 
 export const Dashboard = () => {
-  const theme = useTheme();
-  const [stats, setStats] = useState(null);
-  const [chartData, setChartData] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [searchTerm, setSearchTerm] = useState("");
+  const [showTable, setShowTable] = useState(false);
+  const [vehiculos, setVehiculos] = useState([]);
+  const [filteredVehiculos, setFilteredVehiculos] = useState([]);
+  const [vehiculoActual, setVehiculoActual] = useState(null);
+  const [mapCenter, setMapCenter] = useState([-9.9306, -76.2422]); // Coordenadas de Huánuco
+  const [mapZoom, setMapZoom] = useState(14);
+  const [mapKey, setMapKey] = useState(Date.now());
+  const [statusFilter, setStatusFilter] = useState(null);
+  const [grupos, setGrupos] = useState([]);
+  const [geofences, setGeofences] = useState([]);
+  const [selectedGroup, setSelectedGroup] = useState(null);
+  const [showFilters, setShowFilters] = useState(false);
+  const [routeCoordinates, setRouteCoordinates] = useState([]);
+
+  const isMd = useMediaQuery((theme) => theme.breakpoints.up("md"));
+
+  const { BaseLayer } = LayersControl;
+  const { devices } = useContext(WebSocketContext);
 
   useEffect(() => {
-    loadDashboardData();
+    getGrupos();
+    getGeofences();
+    setLoading(false);
   }, []);
 
-  const loadDashboardData = async () => {
-    try {
-      setLoading(true);
-      
-      // Cargar estadísticas del dashboard
-      const statsResponse = await dashboardAPI.getStats();
-      setStats(statsResponse.data);
-      
-      // Cargar datos de gráficos
-      const chartResponse = await dashboardAPI.getChartData('monthly');
-      setChartData(chartResponse.data.data || []);
-      
-    } catch (error) {
-      console.error('Error loading dashboard data:', error);
-      
-      // Fallback a datos mock si la API falla
-      setStats({
-        total_users: 1234,
-        total_sales: 45678,
-        total_revenue: 123456,
-        page_views: 987654,
-        growth_percentage: 12.5,
-      });
-      
-      setChartData([
-        { name: 'Jan', Investment: 100, Loss: 80, Profit: 120, Maintenance: 60 },
-        { name: 'Feb', Investment: 150, Loss: 60, Profit: 180, Maintenance: 80 },
-        { name: 'Mar', Investment: 80, Loss: 40, Profit: 90, Maintenance: 50 },
-        { name: 'Apr', Investment: 120, Loss: 50, Profit: 140, Maintenance: 70 },
-        { name: 'May', Investment: 200, Loss: 90, Profit: 250, Maintenance: 100 },
-        { name: 'Jun', Investment: 180, Loss: 70, Profit: 220, Maintenance: 90 },
-      ]);
-    } finally {
-      setLoading(false);
+  useEffect(() => {
+    if (devices === null || devices === undefined) {
+      setVehiculos([]); // Limpia los marcadores existentes
+      return;
     }
+    setVehiculos(devices);
+    if (vehiculoActual) {
+      const vehiculo = devices.find(
+        (vehiculo) => vehiculo.id === vehiculoActual
+      );
+      setRouteCoordinates((prevCoordinates) => [
+        ...prevCoordinates,
+        [vehiculo.latitude || 0, vehiculo.longitude || 0],
+      ]);
+    }
+  }, [devices]);
+
+  useEffect(() => {
+    if (vehiculoActual) {
+      const vehiculo = vehiculos.find(
+        (vehiculo) => vehiculo.id === vehiculoActual
+      );
+      setMapCenter([vehiculo.latitude, vehiculo.longitude]);
+      setMapZoom(20);
+      setMapKey(Date.now());
+      setShowTable(false);
+    } else {
+      setMapCenter([-9.9306, -76.2422]);
+      setMapZoom(14);
+      setMapKey(Date.now());
+    }
+    setRouteCoordinates([]);
+  }, [vehiculoActual]);
+
+  useEffect(() => {
+    // Filtrar la lista de vehículos cada vez que cambia el texto de búsqueda, el filtro de estado o el grupo seleccionado
+    let filtered = vehiculos;
+
+    if (searchTerm) {
+      filtered = filtered.filter((vehiculo) =>
+        vehiculo.name.toLowerCase().includes(searchTerm.toLowerCase())
+      );
+    }
+
+    if (statusFilter) {
+      filtered = filtered.filter(
+        (vehiculo) => vehiculo.status === statusFilter.value
+      );
+    }
+
+    if (selectedGroup) {
+      filtered = filtered.filter(
+        (vehiculo) => vehiculo.groupid === selectedGroup.id
+      );
+    }
+
+    setFilteredVehiculos(filtered);
+  }, [searchTerm, statusFilter, selectedGroup, vehiculos]);
+
+  const handleSearchChange = (event) => {
+    setSearchTerm(event.target.value); // Actualiza el texto de búsqueda
   };
+
+  const handleShowTable = () => {
+    setShowTable(showTable ? false : true);
+  };
+
+  const handleToggleFilters = () => {
+    setShowFilters(!showFilters);
+  };
+
+  const definirColorDeEstado = (estado) => {
+    let color = "";
+    switch (estado) {
+      case "online":
+        color = "text-success";
+        break;
+      case "offline":
+        color = "text-danger";
+        break;
+      case "unknown":
+        color = "text-secondary";
+        break;
+      default:
+        break;
+    }
+    return color;
+  };
+
+  const getTimeAgo = (fechaString) => {
+    if (fechaString === null) return "Fuera de linea";
+
+    const fechaPasada = new Date(fechaString);
+    if (isNaN(fechaPasada.getTime())) return "Fecha inválida";
+
+    // Obtener hora actual y sumarle 5 horas
+    const ahoraOriginal = new Date();
+    const ahora = new Date(ahoraOriginal.getTime() + 5 * 60 * 60 * 1000); // Suma 5 horas en milisegundos
+
+    const diffMs = ahora.getTime() - fechaPasada.getTime();
+
+    if (diffMs < 0) return "Fecha en el futuro"; // Comparado contra (ahora + 5h)
+
+    const SEGUNDO = 1000,
+      MINUTO = SEGUNDO * 60,
+      HORA = MINUTO * 60,
+      DIA = HORA * 24;
+    const MES = DIA * 30.44,
+      ANO = DIA * 365.25; // Aproximaciones
+
+    const diffYears = Math.round(diffMs / ANO);
+    if (diffYears >= 1)
+      return `Hace ${diffYears} año${diffYears > 1 ? "s" : ""}`;
+
+    const diffMonths = Math.round(diffMs / MES);
+    if (diffMonths >= 1)
+      return `Hace ${diffMonths} mes${diffMonths > 1 ? "es" : ""}`;
+
+    const diffDays = Math.round(diffMs / DIA);
+    if (diffDays >= 1) return `Hace ${diffDays} día${diffDays > 1 ? "s" : ""}`;
+
+    const diffHours = Math.round(diffMs / HORA);
+    if (diffHours >= 1)
+      return `Hace ${diffHours} hora${diffHours > 1 ? "s" : ""}`;
+
+    const diffMinutes = Math.round(diffMs / MINUTO);
+    if (diffMinutes >= 1)
+      return `Hace ${diffMinutes} minuto${diffMinutes > 1 ? "s" : ""}`;
+
+    const diffSeconds = Math.round(diffMs / SEGUNDO);
+    if (diffSeconds >= 10)
+      return `Hace ${diffSeconds} segundo${diffSeconds > 1 ? "s" : ""}`;
+
+    return "Hace unos segundos";
+  };
+
+  async function getGeofences() {
+    try {
+      const result = await getTraccar("geofences");
+      setGeofences(result.data);
+    } catch (error) {
+      console.log("error: " + error);
+    }
+  }
+
+  // Función para parsear un string de tipo CIRCLE
+  function parseCircle(circleString) {
+    const regex = /CIRCLE\s*\(\s*([-\d.]+)\s+([-\d.]+)\s*,\s*([\d.]+)\s*\)/;
+    const match = circleString.match(regex);
+    if (match) {
+      const lat = parseFloat(match[1]);
+      const lng = parseFloat(match[2]);
+      const radius = parseFloat(match[3]);
+      return { center: [lat, lng], radius };
+    }
+    return null;
+  }
+
+  // Función para parsear un string de tipo POLYGON
+  function parsePolygon(polygonString) {
+    const regex = /POLYGON\s*\(\(\s*([-\d.\s,]+)\s*\)\)/;
+    const match = polygonString.match(regex);
+    if (match) {
+      const pointsString = match[1];
+      const points = pointsString.split(",").map((point) => {
+        const [lat, lng] = point.trim().split(/\s+/).map(parseFloat);
+        return [lat, lng];
+      });
+      return { points };
+    }
+    return null;
+  }
+
+  // Función para parsear un string de tipo LINESTRING
+  function parseLineString(lineString) {
+    const regex = /LINESTRING\s*\(\s*([-\d.\s,]+)\s*\)/;
+    const match = lineString.match(regex);
+    if (match) {
+      const pointsString = match[1];
+      const points = pointsString.split(",").map((point) => {
+        const [lat, lng] = point.trim().split(/\s+/).map(parseFloat);
+        return [lat, lng];
+      });
+      return { points };
+    }
+    return null;
+  }
+
+  async function getGrupos() {
+    try {
+      const result = await getTraccar("groups");
+      setGrupos(result.data);
+    } catch (error) {
+      console.log("error: " + error);
+    }
+  }
+
+  const getStatusCounts = () => {
+    const counts = {
+      online: 0,
+      offline: 0,
+      unknown: 0,
+    };
+    vehiculos.forEach((vehiculo) => {
+      if (vehiculo.status) {
+        counts[vehiculo.status]++;
+      }
+    });
+    return counts;
+  };
+
+  const statusCounts = getStatusCounts();
 
   if (loading) {
     return (
-      <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: 400 }}>
+      <Box
+        sx={{
+          display: "flex",
+          justifyContent: "center",
+          alignItems: "center",
+          minHeight: 400,
+        }}
+      >
         <CircularProgress />
       </Box>
     );
   }
 
-  const statsData = [
-    {
-      title: 'Total Earning',
-      value: `$${stats?.total_revenue?.toLocaleString() || '0'}`,
-      icon: <AttachMoney />,
-      trend: `+${stats?.growth_percentage || 0}%`,
-      color: 'primary',
-      gradient: 'linear-gradient(135deg, #673ab7 0%, #9c27b0 100%)',
-    },
-    {
-      title: 'Total Order',
-      value: `$${stats?.total_sales?.toLocaleString() || '0'}`,
-      icon: <ShoppingCart />,
-      trend: '+1.3%',
-      color: 'info',
-      gradient: 'linear-gradient(135deg, #2196f3 0%, #21cbf3 100%)',
-    },
-    {
-      title: 'Total Income',
-      value: `$${Math.floor((stats?.total_revenue || 0) * 0.7).toLocaleString()}`,
-      icon: <TrendingUp />,
-      trend: '+3.1%',
-      color: 'success',
-      gradient: 'linear-gradient(135deg, #4caf50 0%, #8bc34a 100%)',
-    },
-    {
-      title: 'Total Users',
-      value: stats?.total_users?.toLocaleString() || '0',
-      icon: <People />,
-      trend: '+5.2%',
-      color: 'warning',
-      gradient: 'linear-gradient(135deg, #ff9800 0%, #ffc107 100%)',
-    },
-  ];
-
   return (
-    <Box>
-      <Typography variant="h4" sx={{ mb: 3, fontWeight: 600 }}>
-        Dashboard
-      </Typography>
-
-      {/* Stats Cards */}
-      <Grid container spacing={3} sx={{ mb: 4 }}>
-        {statsData.map((stat, index) => (
-          <Grid item xs={12} sm={6} md={3} key={index}>
-            <Card
-              sx={{
-                background: stat.gradient,
-                color: 'white',
-                position: 'relative',
-                overflow: 'hidden',
-                '&::before': {
-                  content: '""',
-                  position: 'absolute',
-                  top: 0,
-                  right: 0,
-                  width: 100,
-                  height: 100,
-                  background: alpha('#ffffff', 0.1),
-                  borderRadius: '50%',
-                  transform: 'translate(30px, -30px)',
-                },
-              }}
-            >
-              <CardContent>
-                <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-                  <Box>
-                    <Typography variant="h4" sx={{ fontWeight: 700, mb: 1 }}>
-                      {stat.value}
-                    </Typography>
-                    <Typography variant="body2" sx={{ opacity: 0.8 }}>
-                      {stat.title}
-                    </Typography>
-                  </Box>
-                  <Box sx={{ opacity: 0.8 }}>
-                    {stat.icon}
-                  </Box>
-                </Box>
-                <Box sx={{ mt: 2, display: 'flex', alignItems: 'center' }}>
-                  {stat.trend.startsWith('+') ? <TrendingUp fontSize="small" /> : <TrendingDown fontSize="small" />}
-                  <Typography variant="body2" sx={{ ml: 0.5 }}>
-                    {stat.trend}
-                  </Typography>
-                </Box>
-              </CardContent>
-            </Card>
-          </Grid>
-        ))}
-      </Grid>
-
-      <Grid container spacing={3}>
-        {/* Total Growth Chart */}
-        <Grid item xs={12} lg={8}>
-          <Card>
-            <CardContent>
-              <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
-                <Box>
-                  <Typography variant="h6" sx={{ fontWeight: 600 }}>
-                    Total Growth
-                  </Typography>
-                  <Typography variant="h4" sx={{ fontWeight: 700, mt: 1 }}>
-                    ${stats?.total_revenue?.toLocaleString() || '0'}
-                  </Typography>
-                </Box>
-                <Button variant="outlined" size="small" onClick={loadDashboardData}>
-                  Refresh
+    <Box sx={{ height: "100%" }}>
+      {vehiculos.length > 0 ? (
+        <Paper
+          sx={{
+            width: "100%",
+            height: "100%",
+            overflow: "hidden",
+            padding: 1,
+          }}
+        >
+          <Box sx={{ position: "relative", height: "100%" }}>
+            <Paper sx={{ position: "absolute", zIndex: 500, margin: 1 }}>
+              <Stack direction="row" alignItems="center">
+                <Button
+                  color="secondary"
+                  fullWidth
+                  onClick={() => handleShowTable()}
+                >
+                  {showTable ? <ExpandLess /> : <ExpandMore />}
                 </Button>
-              </Box>
-              <Box sx={{ height: 300 }}>
-                <ResponsiveContainer width="100%" height="100%">
-                  <BarChart data={chartData}>
-                    <CartesianGrid strokeDasharray="3 3" />
-                    <XAxis dataKey="name" />
-                    <YAxis />
-                    <Tooltip />
-                    <Bar dataKey="Investment" stackId="a" fill="#2196f3" />
-                    <Bar dataKey="Loss" stackId="a" fill="#4caf50" />
-                    <Bar dataKey="Profit" stackId="a" fill="#673ab7" />
-                    <Bar dataKey="Maintenance" stackId="a" fill="#ff9800" />
-                  </BarChart>
-                </ResponsiveContainer>
-              </Box>
-            </CardContent>
-          </Card>
-        </Grid>
+              </Stack>
+              {showTable && (
+                <Box sx={{padding: 1}}>
+                  <Stack
+                    sx={{ position: "relative" }}
+                    direction="row"
+                    alignItems="center"
+                    spacing={1}
+                    justifyContent="space-between"
+                  >
+                    <TextField
+                      id="form_name"
+                      name="form_name"
+                      placeholder="Busca tu vehículo..."
+                      sx={{ margin: { xs: 1, md: 2 } }}
+                      InputProps={{
+                        endAdornment: (
+                          <InputAdornment position="end">
+                            <Button
+                              color="secondary"
+                              onClick={handleToggleFilters}
+                            >
+                              <Tune />
+                            </Button>
+                          </InputAdornment>
+                        ),
+                      }}
+                      value={searchTerm}
+                      onChange={handleSearchChange}
+                      variant="outlined"
+                      size="small"
+                      fullWidth
+                    />
+                    {showFilters && (
+                      <Paper
+                        sx={{
+                          position: "absolute",
+                          top: "100%",
+                          width: "100%",
+                          left: 32,
+                          padding: { xs: 1, md: 2 },
+                        }}
+                        elevation={3}
+                      >
+                        <Autocomplete
+                          sx={{ marginBottom: { xs: 1, md: 2 } }}
+                          options={[
+                            {
+                              label: "En línea",
+                              value: "online",
+                              count: statusCounts.online,
+                            },
+                            {
+                              label: "Fuera de línea",
+                              value: "offline",
+                              count: statusCounts.offline,
+                            },
+                            {
+                              label: "Desconocido",
+                              value: "unknown",
+                              count: statusCounts.unknown,
+                            },
+                          ]}
+                          getOptionLabel={(option) =>
+                            option.label + " (" + option.count + ")"
+                          }
+                          value={statusFilter}
+                          onChange={(event, newValue) => {
+                            setStatusFilter(newValue);
+                          }}
+                          renderInput={(params) => (
+                            <TextField
+                              {...params}
+                              label="Estado"
+                              variant="outlined"
+                              size="small"
+                            />
+                          )}
+                        />
+                        <Autocomplete
+                          options={grupos}
+                          getOptionLabel={(option) => option.name}
+                          value={selectedGroup}
+                          onChange={(event, newValue) => {
+                            setSelectedGroup(newValue);
+                          }}
+                          renderInput={(params) => (
+                            <TextField
+                              {...params}
+                              label="Grupo"
+                              variant="outlined"
+                              size="small"
+                            />
+                          )}
+                        />
+                      </Paper>
+                    )}
+                  </Stack>
+                  <TableContainer
+                    sx={{ maxHeight: { xs: "200px", md: "400px" } }}
+                  >
+                    <Table size="small">
+                      <TableBody>
+                        {filteredVehiculos.map((row, index) => {
+                          const tieneCoordenadas =
+                            typeof row.latitude === "number" &&
+                            typeof row.longitude === "number";
 
-        {/* Performance Metrics */}
-        <Grid item xs={12} lg={4}>
-          <Card>
-            <CardContent>
-              <Typography variant="h6" sx={{ fontWeight: 600, mb: 3 }}>
-                Performance Metrics
-              </Typography>
-              <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
-                <Box>
-                  <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 1 }}>
-                    <Typography variant="body2">Conversion Rate</Typography>
-                    <Typography variant="body2" sx={{ fontWeight: 600 }}>75%</Typography>
-                  </Box>
-                  <LinearProgress variant="determinate" value={75} sx={{ height: 8, borderRadius: 4 }} />
+                          return (
+                            <TableRow
+                              key={index}
+                              hover
+                              role="checkbox"
+                              tabIndex={-1}
+                              onClick={
+                                tieneCoordenadas
+                                  ? () => setVehiculoActual(row.id)
+                                  : () => {}
+                              }
+                              sx={{ cursor: "pointer" }}
+                            >
+                              {columns.map((column, index) => {
+                                const value = row[column.id];
+                                const status = definirColorDeEstado(
+                                  row["status"]
+                                );
+                                const statusText =
+                                  row.status === "online"
+                                    ? "En Línea"
+                                    : row.status === "offline"
+                                    ? getTimeAgo(row.lastupdate)
+                                    : "Desconocido";
+                                return (
+                                  <TableCell key={index} align={column.align}>
+                                    <Stack
+                                      direction="row"
+                                      alignItems="center"
+                                      spacing={2}
+                                    >
+                                      <IconCircle
+                                        icon={row["category"]}
+                                        color={"secondary"}
+                                      />
+                                      <Stack>
+                                        <Typography variant="subtitle1">
+                                          {column.format &&
+                                          typeof value === "number"
+                                            ? column.format(value)
+                                            : value}
+                                        </Typography>
+                                        <Stack
+                                          direction="row"
+                                          alignItems="center"
+                                          spacing={1}
+                                        >
+                                          <Typography
+                                            variant="caption"
+                                            color={"text.secondary"}
+                                          >
+                                            {row["uniqueid"] || ""}
+                                          </Typography>
+                                          <Circle
+                                            fontSize="small"
+                                            sx={{ fontSize: "4px" }}
+                                            className={status}
+                                          />
+                                          <Typography
+                                            variant="caption"
+                                            className={status}
+                                          >
+                                            {statusText}
+                                          </Typography>
+                                        </Stack>
+                                      </Stack>
+                                    </Stack>
+                                  </TableCell>
+                                );
+                              })}
+                            </TableRow>
+                          );
+                        })}
+                      </TableBody>
+                    </Table>
+                  </TableContainer>
                 </Box>
-                <Box>
-                  <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 1 }}>
-                    <Typography variant="body2">Customer Satisfaction</Typography>
-                    <Typography variant="body2" sx={{ fontWeight: 600 }}>85%</Typography>
-                  </Box>
-                  <LinearProgress variant="determinate" value={85} color="success" sx={{ height: 8, borderRadius: 4 }} />
-                </Box>
-                <Box>
-                  <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 1 }}>
-                    <Typography variant="body2">Revenue Growth</Typography>
-                    <Typography variant="body2" sx={{ fontWeight: 600 }}>65%</Typography>
-                  </Box>
-                  <LinearProgress variant="determinate" value={65} color="warning" sx={{ height: 8, borderRadius: 4 }} />
-                </Box>
-              </Box>
-            </CardContent>
-          </Card>
-        </Grid>
+              )}
+            </Paper>
+            <MapContainer
+              key={mapKey}
+              style={{ width: "100%", height: "100%" }}
+              center={mapCenter}
+              zoom={mapZoom}
+              zoomControl={false}
+            >
+              <LayersControl position="topright">
+                <BaseLayer checked name="Google">
+                  <TileLayer
+                    url="http://{s}.google.com/vt/lyrs=m&x={x}&y={y}&z={z}"
+                    subdomains={["mt0", "mt1", "mt2", "mt3"]}
+                    maxZoom={20}
+                    attribution="© Google"
+                  />
+                </BaseLayer>
+                <BaseLayer name="Carto Voyager">
+                  <TileLayer
+                    url="https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png"
+                    attribution='© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors © <a href="https://carto.com/attributions">CARTO</a>'
+                    subdomains={["a", "b", "c", "d"]}
+                    maxZoom={19} // Carto Voyager suele ir hasta zoom 19
+                  />
+                </BaseLayer>
+                <BaseLayer name="OpenStreetMap">
+                  <TileLayer
+                    url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+                    attribution='© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+                  />
+                </BaseLayer>
+                <BaseLayer name="Google Satélite">
+                  <TileLayer
+                    url="http://{s}.google.com/vt/lyrs=s&x={x}&y={y}&z={z}"
+                    subdomains={["mt0", "mt1", "mt2", "mt3"]}
+                    maxZoom={20}
+                    attribution="© Google"
+                  />
+                </BaseLayer>
+                <BaseLayer name="Google Híbrido">
+                  <TileLayer
+                    url="http://{s}.google.com/vt/lyrs=s,h&x={x}&y={y}&z={z}"
+                    subdomains={["mt0", "mt1", "mt2", "mt3"]}
+                    maxZoom={20}
+                    attribution="© Google"
+                  />
+                </BaseLayer>
+                <BaseLayer name="Google Relieve">
+                  <TileLayer
+                    url="http://{s}.google.com/vt/lyrs=p&x={x}&y={y}&z={z}"
+                    subdomains={["mt0", "mt1", "mt2", "mt3"]}
+                    maxZoom={20}
+                    attribution="© Google"
+                  />
+                </BaseLayer>
+              </LayersControl>
+              <ZoomControl position="bottomleft" />
+              {vehiculos.map((vehiculo, index) => {
+                const icon = L.icon({
+                  iconUrl:
+                    "https://cdn-icons-png.flaticon.com/128/809/809998.png",
+                  iconSize: [32, 32], // Tamaño del icono
+                  iconAnchor: [16, 16], // Punto del icono que se alineará con la posición del marcador
+                  popupAnchor: [1, -12], // Punto desde el que se abrirá el popup en relación al icono
+                });
+                return (
+                  <Marker
+                    key={index}
+                    title={vehiculo?.name}
+                    position={[
+                      vehiculo?.latitude || 0,
+                      vehiculo?.longitude || 0,
+                    ]}
+                    icon={icon}
+                    eventHandlers={{
+                      click: () => setVehiculoActual(vehiculo.id), // Maneja el clic en el marcador
+                    }}
+                  >
+                    {vehiculoActual === vehiculo.id && (
+                      <LeafletCircle
+                        center={[
+                          vehiculo?.latitude || 0,
+                          vehiculo?.longitude || 0,
+                        ]}
+                        radius={5} // Radio en metros
+                        color="rgba(0, 128, 0, 0.0)" // Color del borde en formato RGBA (verde opaco)
+                        fillColor="rgba(0, 128, 0, 0.3)"
+                        fillOpacity={1} // Opacidad del relleno
+                      />
+                    )}
+                  </Marker>
+                );
+              })}
+              {geofences.map((row, index) => {
+                let type;
+                let data;
 
-        {/* Monthly Revenue */}
-        <Grid item xs={12} md={6}>
-          <Card>
-            <CardContent>
-              <Typography variant="h6" sx={{ fontWeight: 600, mb: 2 }}>
-                Monthly Revenue
-              </Typography>
-              <Box sx={{ height: 200 }}>
-                <ResponsiveContainer width="100%" height="100%">
-                  <AreaChart data={chartData.slice(0, 6)}>
-                    <CartesianGrid strokeDasharray="3 3" />
-                    <XAxis dataKey="name" />
-                    <YAxis />
-                    <Tooltip />
-                    <Area type="monotone" dataKey="Profit" stroke={theme.palette.primary.main} fill={alpha(theme.palette.primary.main, 0.3)} />
-                  </AreaChart>
-                </ResponsiveContainer>
-              </Box>
-            </CardContent>
-          </Card>
-        </Grid>
+                if (String(row.area).includes("CIRCLE")) {
+                  type = "CIRCLE";
+                  data = parseCircle(row.area);
+                } else if (String(row.area).includes("POLYGON")) {
+                  type = "POLYGON";
+                  data = parsePolygon(row.area);
+                } else if (String(row.area).includes("LINESTRING")) {
+                  type = "LINESTRING";
+                  data = parseLineString(row.area);
+                }
 
-        {/* Recent Activity */}
-        <Grid item xs={12} md={6}>
-          <Card>
-            <CardContent>
-              <Typography variant="h6" sx={{ fontWeight: 600, mb: 2 }}>
-                Recent Activity
-              </Typography>
-              <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-                <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                  <Typography variant="body2">New user registration</Typography>
-                  <Chip label="2 min ago" size="small" color="primary" />
-                </Box>
-                <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                  <Typography variant="body2">Order #1234 completed</Typography>
-                  <Chip label="5 min ago" size="small" color="success" />
-                </Box>
-                <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                  <Typography variant="body2">Payment received</Typography>
-                  <Chip label="10 min ago" size="small" color="info" />
-                </Box>
-                <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                  <Typography variant="body2">System backup completed</Typography>
-                  <Chip label="1 hour ago" size="small" color="warning" />
-                </Box>
-              </Box>
-            </CardContent>
-          </Card>
-        </Grid>
-      </Grid>
+                const color = row?.attributes?.color || "blue";
+                if (type === "POLYGON") {
+                  return (
+                    <Polygon
+                      key={index}
+                      positions={data.points}
+                      color={color}
+                    />
+                  );
+                } else if (type === "CIRCLE") {
+                  return (
+                    <LeafletCircle
+                      key={index}
+                      center={data.center}
+                      radius={data.radius}
+                      color={color}
+                    />
+                  );
+                } else if (type === "LINESTRING") {
+                  return (
+                    <Polyline
+                      key={index}
+                      positions={data.points}
+                      color={color}
+                    />
+                  );
+                }
+                return null;
+              })}
+              {vehiculoActual && routeCoordinates.length > 1 && (
+                <Polyline
+                  positions={routeCoordinates}
+                  strokeWidth={2}
+                  strokeColor="secondary.main"
+                />
+              )}
+            </MapContainer>
+            {vehiculoActual && (
+              <Paper
+                sx={{
+                  position: "absolute",
+                  zIndex: 500,
+                  bottom: 0,
+                  right: 0,
+                  borderRadius: 0,
+                  width: {
+                    xs: "calc(100% - 150px)",
+                    md: "480px",
+                  },
+                  margin: 0,
+                }}
+              >
+                <Stack direction={"column"} style={{ position: "relative" }}>
+                  <Button
+                    color="secondary"
+                    fullWidth
+                    onClick={() => setVehiculoActual(null)}
+                  >
+                    <ExpandMore fontSize={isMd ? "medium" : "small"} />
+                  </Button>
+                  <>
+                    <Typography
+                      variant={isMd ? "h4" : "h5"}
+                      sx={{
+                        fontWeight: "bold",
+                        textAlign: "center",
+                        color: "secondary.main",
+                      }}
+                    >
+                      {vehiculos.find((v) => v.id == vehiculoActual)?.name ||
+                        "-"}
+                    </Typography>
+                    <Grid container spacing={isMd ? 2 : 1} sx={{ margin: 0 }}>
+                      <Grid item xs={12} md={6}>
+                        <Stack
+                          direction="row"
+                          spacing={isMd ? 2 : 1}
+                          alignItems="flex-start"
+                        >
+                          <Typography variant="h5" sx={{ fontWeight: "bold" }}>
+                            Velocidad:
+                          </Typography>
+                          <Typography variant={isMd ? "body1" : "caption"}>
+                            {Number(
+                              vehiculos.find((v) => v.id == vehiculoActual)
+                                ?.speed || 0
+                            ).toFixed(2)}{" "}
+                            Km/h
+                          </Typography>
+                        </Stack>
+                      </Grid>
+                      <Grid item xs={12} md={6}>
+                        <Stack
+                          direction="row"
+                          spacing={isMd ? 2 : 1}
+                          alignItems="flex-start"
+                        >
+                          <Typography variant="h5" sx={{ fontWeight: "bold" }}>
+                            Estado:
+                          </Typography>
+                          <Typography variant={isMd ? "body1" : "caption"}>
+                            {(vehiculos.find((v) => v.id == vehiculoActual)
+                              ?.status === "online"
+                              ? "En linea"
+                              : "Fuera de linea") || "Desconocido"}
+                          </Typography>
+                        </Stack>
+                      </Grid>
+                      {isMd && (
+                        <>
+                          <Grid item xs={12} md={6}>
+                            <Stack
+                              direction="row"
+                              spacing={isMd ? 2 : 1}
+                              alignItems="flex-start"
+                            >
+                              <Typography
+                                variant="h5"
+                                sx={{ fontWeight: "bold" }}
+                              >
+                                Modelo:
+                              </Typography>
+                              <Typography variant={isMd ? "body1" : "caption"}>
+                                {vehiculos.find((v) => v.id == vehiculoActual)
+                                  ?.model || "-"}
+                              </Typography>
+                            </Stack>
+                          </Grid>
+                          <Grid item xs={12} md={6}>
+                            <Stack
+                              direction="row"
+                              spacing={isMd ? 2 : 1}
+                              alignItems="flex-start"
+                            >
+                              <Typography
+                                variant="h5"
+                                sx={{ fontWeight: "bold" }}
+                              >
+                                Conductor:
+                              </Typography>
+                              <Typography variant={isMd ? "body1" : "caption"}>
+                                {vehiculos.find((v) => v.id == vehiculoActual)
+                                  ?.driver || "-"}
+                              </Typography>
+                            </Stack>
+                          </Grid>
+                          <Grid item xs={12} md={6}>
+                            <Stack
+                              direction="row"
+                              spacing={isMd ? 2 : 1}
+                              alignItems="flex-start"
+                            >
+                              <Typography
+                                variant="h5"
+                                sx={{ fontWeight: "bold" }}
+                              >
+                                Rumbo:
+                              </Typography>
+                              <Typography
+                                variant={isMd ? "body1" : "caption"}
+                                sx={{ position: "relative" }}
+                              >
+                                <Box
+                                  position="absolute"
+                                  sx={{
+                                    display: "flex",
+                                    alignItems: "center",
+                                    justifyContent: "center",
+                                    transform: `translate(-50%, -50%) rotate(${
+                                      vehiculos.find(
+                                        (v) => v.id == vehiculoActual
+                                      )?.course + 90 || 0
+                                    }deg)`, // Rota el ícono según el heading
+                                  }}
+                                >
+                                  <ArrowBack color="secondary" />
+                                </Box>
+                              </Typography>
+                            </Stack>
+                          </Grid>
+                        </>
+                      )}
+                    </Grid>
+                    <GoogleStreetView
+                      latitude={
+                        vehiculos.find((v) => v.id == vehiculoActual)
+                          .latitude || 0
+                      }
+                      longitude={
+                        vehiculos.find((v) => v.id == vehiculoActual)
+                          .longitude || 0
+                      }
+                      heading={
+                        vehiculos.find((v) => v.id == vehiculoActual)?.course ||
+                        0
+                      }
+                    />
+                  </>
+                </Stack>
+              </Paper>
+            )}
+          </Box>
+        </Paper>
+      ) : (
+        <Paper sx={{ width: "100%", overflow: "hidden" }} className="p-3">
+          <div className="alert alert-warning" role="alert">
+            No tiene ningún vehículo asignado.
+          </div>
+        </Paper>
+      )}
     </Box>
   );
 };

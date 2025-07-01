@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useState, useEffect } from "react";
 import { authAPI } from "../utils/api";
 import { confirmSwal, notificationSwal } from "../utils/swal-helpers";
+import { createSession, encodeBase64 } from "../utils/common";
 
 const AuthContext = createContext(undefined);
 
@@ -98,6 +99,8 @@ export const AuthProvider = ({ children }) => {
         `¡Bienvenido ${userForState.first_name}!`,
         "success"
       );
+
+      createSession("SESSION_TOKEN", encodeBase64(email, password));
 
       return true;
     } catch (error) {
