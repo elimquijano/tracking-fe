@@ -30,6 +30,8 @@ import {
   AccordionDetails,
   CircularProgress,
   Alert,
+  FormControlLabel,
+  Switch,
 } from "@mui/material";
 import { TreeView, TreeItem } from "@mui/x-tree-view";
 import {
@@ -39,42 +41,24 @@ import {
   Delete as DeleteIcon,
   ExpandMore as ExpandMoreIcon,
   ChevronRight as ChevronRightIcon,
-  Folder as FolderIcon,
-  Article as ArticleIcon,
-  Dashboard as DashboardIcon,
-  Settings as SettingsIcon,
-  Apps as AppsIcon,
-  Widgets as WidgetsIcon,
-  Security as SecurityIcon,
-  Group as GroupIcon,
   Refresh as RefreshIcon,
 } from "@mui/icons-material";
 import { useAuth } from "../contexts/AuthContext";
 import { modulesAPI, permissionsAPI } from "../utils/api";
 import { formatDate } from "../utils/formatters";
 import { confirmSwal, notificationSwal } from "../utils/swal-helpers";
+import { getIcon, availableIcons } from "../config/moduleConfig";
 
 const moduleTypes = [
-  { value: "module", label: "Module", icon: <FolderIcon /> },
-  { value: "group", label: "Group", icon: <FolderIcon /> },
-  { value: "page", label: "Page", icon: <ArticleIcon /> },
-  { value: "button", label: "Button", icon: <SettingsIcon /> },
+  { value: "module", label: "Module" },
+  { value: "group", label: "Group" },
+  { value: "page", label: "Page" },
+  { value: "button", label: "Button" },
 ];
 
 const statusOptions = [
   { value: "active", label: "Active", color: "success" },
   { value: "inactive", label: "Inactive", color: "default" },
-];
-
-const iconOptions = [
-  { value: "DashboardIcon", label: "Dashboard", icon: <DashboardIcon /> },
-  { value: "SettingsIcon", label: "Settings", icon: <SettingsIcon /> },
-  { value: "AppsIcon", label: "Apps", icon: <AppsIcon /> },
-  { value: "WidgetsIcon", label: "Widgets", icon: <WidgetsIcon /> },
-  { value: "SecurityIcon", label: "Security", icon: <SecurityIcon /> },
-  { value: "GroupIcon", label: "Group", icon: <GroupIcon /> },
-  { value: "ArticleIcon", label: "Article", icon: <ArticleIcon /> },
-  { value: "FolderIcon", label: "Folder", icon: <FolderIcon /> },
 ];
 
 export const Modules = () => {
@@ -91,10 +75,15 @@ export const Modules = () => {
     slug: "",
     description: "",
     icon: "",
+    route: "",
+    component: "",
+    permission: "",
     sort_order: 0,
     parent_id: null,
     type: "module",
     status: "active",
+    show_in_menu: true,
+    auto_create_permissions: true,
   });
   const [error, setError] = useState("");
 
@@ -111,7 +100,9 @@ export const Modules = () => {
         ...searchFilters,
       };
       const response = await modulesAPI.getAll(params);
-      setModules(response.data.data || []);
+      // Fix: Extract the actual modules array from the nested response
+      const modulesData = response.data?.data?.data || response.data?.data || [];
+      setModules(modulesData);
     } catch (error) {
       console.error("Error loading modules:", error);
       setError("Error al cargar los módulos");
@@ -154,10 +145,15 @@ export const Modules = () => {
         slug: module.slug,
         description: module.description || "",
         icon: module.icon || "",
+        route: module.route || "",
+        component: module.component || "",
+        permission: module.permission || "",
         sort_order: module.sort_order || 0,
         parent_id: module.parent_id,
         type: module.type,
         status: module.status,
+        show_in_menu: module.show_in_menu ?? true,
+        auto_create_permissions: module.auto_create_permissions ?? true,
       });
     } else {
       setEditingModule(null);
@@ -166,10 +162,15 @@ export const Modules = () => {
         slug: "",
         description: "",
         icon: "",
+        route: "",
+        component: "",
+        permission: "",
         sort_order: 0,
         parent_id: null,
         type: "module",
         status: "active",
+        show_in_menu: true,
+        auto_create_permissions: true,
       });
     }
     setOpenDialog(true);
@@ -204,66 +205,9 @@ export const Modules = () => {
       handleCloseDialog();
       loadModules();
       loadModuleTree();
-
-      // Crear permisos automáticamente para el nuevo módulo
-      if (!editingModule) {
-        await createModulePermissions(formData);
-      }
     } catch (error) {
       console.error("Error saving module:", error);
       setError(error.response?.data?.message || "Error al guardar el módulo");
-    }
-  };
-
-  const createModulePermissions = async (moduleData) => {
-    try {
-      const basePermissions = [
-        {
-          name: `${moduleData.slug}.view`,
-          display_name: `Ver ${moduleData.name}`,
-          type: "view",
-        },
-      ];
-
-      // Agregar más permisos según el tipo de módulo
-      if (moduleData.type === "page") {
-        basePermissions.push(
-          {
-            name: `${moduleData.slug}.create`,
-            display_name: `Crear ${moduleData.name}`,
-            type: "create",
-          },
-          {
-            name: `${moduleData.slug}.edit`,
-            display_name: `Editar ${moduleData.name}`,
-            type: "edit",
-          },
-          {
-            name: `${moduleData.slug}.delete`,
-            display_name: `Eliminar ${moduleData.name}`,
-            type: "delete",
-          }
-        );
-      }
-
-      for (const permission of basePermissions) {
-        try {
-          await permissionsAPI.create({
-            ...permission,
-            module: moduleData.name,
-            description: permission.display_name,
-          });
-        } catch (permError) {
-          console.warn(
-            "Permission already exists or error creating:",
-            permError
-          );
-        }
-      }
-
-      loadPermissions();
-    } catch (error) {
-      console.error("Error creating module permissions:", error);
     }
   };
 
@@ -276,7 +220,6 @@ export const Modules = () => {
         return newFilters;
       }
 
-      // Si no es vacío, devuelve el estado actualizado
       return { ...prevFilters, [name]: value };
     });
   };
@@ -321,7 +264,7 @@ export const Modules = () => {
 
   const getTypeIcon = (type) => {
     const typeConfig = moduleTypes.find((t) => t.value === type);
-    return typeConfig ? typeConfig.icon : <FolderIcon />;
+    return typeConfig ? typeConfig.label : type;
   };
 
   const generateSlug = (name) => {
@@ -345,7 +288,7 @@ export const Modules = () => {
       nodeId={node.id.toString()}
       label={
         <Box sx={{ display: "flex", alignItems: "center", gap: 1, py: 1 }}>
-          {getTypeIcon(node.type)}
+          {getIcon(node.icon)}
           <Typography variant="body2" sx={{ fontWeight: 500 }}>
             {node.name}
           </Typography>
@@ -380,14 +323,6 @@ export const Modules = () => {
           minHeight: 400,
         }}
       >
-        <CircularProgress />
-      </Box>
-    );
-  }
-
-  if (loading && modules.length === 0) {
-    return (
-      <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: 400 }}>
         <CircularProgress />
       </Box>
     );
@@ -526,8 +461,8 @@ export const Modules = () => {
                     <TableRow>
                       <TableCell>Módulo</TableCell>
                       <TableCell>Tipo</TableCell>
+                      <TableCell>Ruta</TableCell>
                       <TableCell>Padre</TableCell>
-                      <TableCell>Orden</TableCell>
                       <TableCell>Estado</TableCell>
                       <TableCell>Creado</TableCell>
                       <TableCell align="right">Acciones</TableCell>
@@ -544,7 +479,7 @@ export const Modules = () => {
                               gap: 1,
                             }}
                           >
-                            {getTypeIcon(module.type)}
+                            {getIcon(module.icon)}
                             <Box>
                               <Typography
                                 variant="subtitle2"
@@ -563,11 +498,16 @@ export const Modules = () => {
                         </TableCell>
                         <TableCell>
                           <Chip
-                            label={module.type}
+                            label={getTypeIcon(module.type)}
                             size="small"
                             variant="outlined"
                             sx={{ textTransform: "capitalize" }}
                           />
+                        </TableCell>
+                        <TableCell>
+                          <Typography variant="body2" sx={{ fontFamily: 'monospace', fontSize: '0.75rem' }}>
+                            {module.route || '-'}
+                          </Typography>
                         </TableCell>
                         <TableCell>
                           {module.parent ? (
@@ -580,7 +520,6 @@ export const Modules = () => {
                             </Typography>
                           )}
                         </TableCell>
-                        <TableCell>{module.sort_order}</TableCell>
                         <TableCell>
                           <Chip
                             label={module.status}
@@ -662,7 +601,7 @@ export const Modules = () => {
                 fullWidth
                 label="Descripción"
                 multiline
-                rows={3}
+                rows={2}
                 value={formData.description}
                 onChange={(e) =>
                   setFormData((prev) => ({
@@ -683,7 +622,7 @@ export const Modules = () => {
                   }
                 >
                   <MenuItem value="">Sin icono</MenuItem>
-                  {iconOptions.map((icon) => (
+                  {availableIcons.map((icon) => (
                     <MenuItem key={icon.value} value={icon.value}>
                       <Box
                         sx={{ display: "flex", alignItems: "center", gap: 1 }}
@@ -708,6 +647,39 @@ export const Modules = () => {
                     sort_order: parseInt(e.target.value) || 0,
                   }))
                 }
+              />
+            </Grid>
+            <Grid item xs={12} sm={6}>
+              <TextField
+                fullWidth
+                label="Ruta"
+                value={formData.route}
+                onChange={(e) =>
+                  setFormData((prev) => ({ ...prev, route: e.target.value }))
+                }
+                helperText="Ej: /dashboard/inventory/products"
+              />
+            </Grid>
+            <Grid item xs={12} sm={6}>
+              <TextField
+                fullWidth
+                label="Componente"
+                value={formData.component}
+                onChange={(e) =>
+                  setFormData((prev) => ({ ...prev, component: e.target.value }))
+                }
+                helperText="Ej: ProductList"
+              />
+            </Grid>
+            <Grid item xs={12} sm={6}>
+              <TextField
+                fullWidth
+                label="Permiso Específico"
+                value={formData.permission}
+                onChange={(e) =>
+                  setFormData((prev) => ({ ...prev, permission: e.target.value }))
+                }
+                helperText="Ej: inventory.products.view"
               />
             </Grid>
             <Grid item xs={12} sm={6}>
@@ -745,18 +717,13 @@ export const Modules = () => {
                 >
                   {moduleTypes.map((type) => (
                     <MenuItem key={type.value} value={type.value}>
-                      <Box
-                        sx={{ display: "flex", alignItems: "center", gap: 1 }}
-                      >
-                        {type.icon}
-                        {type.label}
-                      </Box>
+                      {type.label}
                     </MenuItem>
                   ))}
                 </Select>
               </FormControl>
             </Grid>
-            <Grid item xs={12}>
+            <Grid item xs={12} sm={6}>
               <FormControl fullWidth>
                 <InputLabel>Estado</InputLabel>
                 <Select
@@ -774,6 +741,32 @@ export const Modules = () => {
                   ))}
                 </Select>
               </FormControl>
+            </Grid>
+            <Grid item xs={12}>
+              <Box sx={{ display: 'flex', gap: 2 }}>
+                <FormControlLabel
+                  control={
+                    <Switch
+                      checked={formData.show_in_menu}
+                      onChange={(e) =>
+                        setFormData((prev) => ({ ...prev, show_in_menu: e.target.checked }))
+                      }
+                    />
+                  }
+                  label="Mostrar en Menú"
+                />
+                <FormControlLabel
+                  control={
+                    <Switch
+                      checked={formData.auto_create_permissions}
+                      onChange={(e) =>
+                        setFormData((prev) => ({ ...prev, auto_create_permissions: e.target.checked }))
+                      }
+                    />
+                  }
+                  label="Crear Permisos Automáticamente"
+                />
+              </Box>
             </Grid>
           </Grid>
         </DialogContent>

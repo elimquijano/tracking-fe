@@ -135,7 +135,7 @@ export const permissionsAPI = {
   getByModule: (moduleId) => api.get(`/permissions/module/${moduleId}`),
 };
 
-// Funciones de API para módulos
+// Funciones de API para módulos - ACTUALIZADAS
 export const modulesAPI = {
   getAll: (params = {}) => api.get('/modules', { params }),
   getById: (id) => api.get(`/modules/${id}`),
@@ -143,7 +143,8 @@ export const modulesAPI = {
   update: (id, moduleData) => api.put(`/modules/${id}`, moduleData),
   delete: (id) => api.delete(`/modules/${id}`),
   getTree: () => api.get('/modules/tree'),
-  menu: () => api.get('/modules/menu'), // Nueva función para obtener el menú dinámico
+  menu: () => api.get('/modules/menu'), // Menú dinámico filtrado por permisos
+  getRouteConfig: () => api.get('/modules/route-config'), // Configuración de rutas
 };
 
 // Funciones de API para dashboard

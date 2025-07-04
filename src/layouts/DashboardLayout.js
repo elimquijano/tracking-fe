@@ -30,38 +30,22 @@ import {
   Menu as MenuIcon,
   Search as SearchIcon,
   Notifications as NotificationsIcon,
-  Dashboard as DashboardIcon,
-  People as PeopleIcon,
   ExpandLess,
   ExpandMore,
   Logout as LogoutIcon,
-  BarChart as BarChartIcon,
-  Storage as StorageIcon,
-  TrendingUp as TrendingUpIcon,
-  PieChart as PieChartIcon,
-  Chat as ChatIcon,
-  CalendarToday as CalendarIcon,
-  Mail as MailIcon,
-  ViewKanban as KanbanIcon,
-  Group as GroupIcon,
   Settings as SettingsIcon,
   Fullscreen as FullscreenIcon,
   DarkMode as DarkModeIcon,
   LightMode as LightModeIcon,
+  FullscreenExit,
   ChevronLeft as ChevronLeftIcon,
   ChevronRight as ChevronRightIcon,
-  Article as ArticleIcon,
-  FullscreenExit,
-  Apps as AppsIcon,
-  Widgets as WidgetsIcon,
-  Security as SecurityIcon,
-  VpnKey as VpnKeyIcon,
-  Person as PersonIcon,
 } from "@mui/icons-material";
 import { useNavigate, useLocation, Outlet } from "react-router-dom";
 import { useAuth } from "../contexts/AuthContext";
 import { useTheme as useCustomTheme } from "../contexts/ThemeContext";
 import { notificationsAPI, modulesAPI } from "../utils/api";
+import { getIcon } from "../config/moduleConfig";
 import { WebSocketProvider } from "../contexts/SocketContext";
 
 const drawerWidth = 260;
@@ -79,48 +63,6 @@ const exitFullscreen = () => {
   else if (document.mozCancelFullScreen) document.mozCancelFullScreen();
   else if (document.webkitExitFullscreen) document.webkitExitFullscreen();
   else if (document.msExitFullscreen) document.msExitFullscreen();
-};
-
-// Mapeo de iconos
-const iconMap = {
-  DashboardIcon: <DashboardIcon />,
-  BarChartIcon: <BarChartIcon />,
-  TrendingUpIcon: <TrendingUpIcon />,
-  StorageIcon: <StorageIcon />,
-  PieChartIcon: <PieChartIcon />,
-  PeopleIcon: <PeopleIcon />,
-  SecurityIcon: <SecurityIcon />,
-  VpnKeyIcon: <VpnKeyIcon />,
-  GroupIcon: <GroupIcon />,
-  PersonIcon: <PersonIcon />,
-  ChatIcon: <ChatIcon />,
-  ViewKanbanIcon: <KanbanIcon />,
-  MailIcon: <MailIcon />,
-  CalendarTodayIcon: <CalendarIcon />,
-  ArticleIcon: <ArticleIcon />,
-  SettingsIcon: <SettingsIcon />,
-  AppsIcon: <AppsIcon />,
-  WidgetsIcon: <WidgetsIcon />,
-};
-
-// Mapeo de rutas
-const routeMap = {
-  "dashboard.default": "/dashboard",
-  "dashboard.analytics": "/dashboard/analytics-dashboard",
-  "widget.statistics": "/dashboard/statistics",
-  "widget.data": "/dashboard/data",
-  "widget.chart": "/dashboard/chart",
-  "users.list": "/dashboard/users",
-  "users.roles": "/dashboard/users/roles",
-  "users.permissions": "/dashboard/users/permissions",
-  "customers.list": "/dashboard/customers",
-  "customers.details": "/dashboard/customers/details",
-  chat: "/dashboard/chat",
-  kanban: "/dashboard/kanban",
-  mail: "/dashboard/mail",
-  calendar: "/dashboard/calendar",
-  "system.modules": "/dashboard/modules",
-  "system.settings": "/dashboard/settings",
 };
 
 export const DashboardLayout = () => {
@@ -260,19 +202,10 @@ export const DashboardLayout = () => {
     }
   };
 
-  const getIcon = (iconName) => {
-    return iconMap[iconName] || <ArticleIcon />;
-  };
-
-  const getRoute = (slug) => {
-    return routeMap[slug] || "#";
-  };
-
   const renderMenuItem = (item, depth = 0) => {
     const hasChildren = item.children && item.children.length > 0;
     const isExpanded = expandedItems.includes(item.name);
-    const route = getRoute(item.slug);
-    const isActive = route !== "#" && location.pathname === route;
+    const isActive = item.route && location.pathname === item.route;
 
     return (
       <React.Fragment key={item.id}>
@@ -297,8 +230,8 @@ export const DashboardLayout = () => {
             onClick={() => {
               if (hasChildren && !sidebarCollapsed) {
                 handleExpandClick(item.name);
-              } else if (route !== "#") {
-                navigate(route);
+              } else if (item.route) {
+                navigate(item.route);
               }
             }}
           >
@@ -358,9 +291,17 @@ export const DashboardLayout = () => {
 
   const renderModule = (module) => {
     const visibleItems =
-      module.children?.filter((item) => item.status === "active") || [];
+      module.children?.filter(
+        (item) => item.status === "active" && item.show_in_menu
+      ) || [];
 
-    if (visibleItems.length === 0) return null;
+    // Si es un módulo sin hijos visibles, no mostrarlo
+    if (module.type === "module" && visibleItems.length === 0) return null;
+
+    // Si es una página individual, mostrarla directamente
+    if (module.type === "page") {
+      return renderMenuItem(module);
+    }
 
     return (
       <Box key={module.id} sx={{ mb: 2 }}>

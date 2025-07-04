@@ -1,35 +1,30 @@
-import React from "react";
-import {
-  BrowserRouter as Router,
-  Routes,
-  Route,
-  Navigate,
-} from "react-router-dom";
-import { CssBaseline, CircularProgress, Box } from "@mui/material";
-import { CustomThemeProvider } from "./contexts/ThemeContext";
-import { AuthProvider, useAuth } from "./contexts/AuthContext";
-import { ProtectedRoute } from "./components/ProtectedRoute";
-import { DashboardLayout } from "./layouts/DashboardLayout";
-import { Landing } from "./pages/Landing";
-import { Login } from "./pages/Login";
-import { Signup } from "./pages/Signup";
-import { ForgotPassword } from "./pages/ForgotPassword";
-import { Unauthorized } from "./pages/Unauthorized";
-import { Dashboard } from "./pages/Dashboard";
-import { Analytics } from "./pages/Analytics";
-import { Users } from "./pages/Users";
-import { UserRoles } from "./pages/UserRoles";
-import { UserPermissions } from "./pages/UserPermissions";
-import { Modules } from "./pages/Modules";
-import { Settings } from "./pages/Settings";
-import { Statistics } from "./pages/Statistics";
-import { DataPage } from "./pages/DataPage";
-import { ChartPage } from "./pages/ChartPage";
-import { Customers } from "./pages/Customers";
-import { Chat } from "./pages/Chat";
-import { Kanban } from "./pages/Kanban";
-import { Mail } from "./pages/Mail";
-import { Calendar } from "./pages/Calendar";
+import React from 'react';
+import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
+import { CssBaseline, CircularProgress, Box } from '@mui/material';
+import { CustomThemeProvider } from './contexts/ThemeContext';
+import { AuthProvider, useAuth } from './contexts/AuthContext';
+import { ProtectedRoute } from './components/ProtectedRoute';
+import { DashboardLayout } from './layouts/DashboardLayout';
+import { Landing } from './pages/Landing';
+import { Login } from './pages/Login';
+import { Signup } from './pages/Signup';
+import { ForgotPassword } from './pages/ForgotPassword';
+import { Unauthorized } from './pages/Unauthorized';
+import { Dashboard } from './pages/Dashboard';
+import { Analytics } from './pages/Analytics';
+import { Users } from './pages/Users';
+import { UserRoles } from './pages/UserRoles';
+import { UserPermissions } from './pages/UserPermissions';
+import { Modules } from './pages/Modules';
+import { Settings } from './pages/Settings';
+import { Statistics } from './pages/Statistics';
+import { DataPage } from './pages/DataPage';
+import { ChartPage } from './pages/ChartPage';
+import { Customers } from './pages/Customers';
+import { Chat } from './pages/Chat';
+import { Kanban } from './pages/Kanban';
+import { Mail } from './pages/Mail';
+import { Calendar } from './pages/Calendar';
 
 // Componente para manejar rutas públicas (redirigir si ya está logueado)
 const PublicRoute = ({ children }) => {
@@ -39,10 +34,10 @@ const PublicRoute = ({ children }) => {
     return (
       <Box
         sx={{
-          display: "flex",
-          justifyContent: "center",
-          alignItems: "center",
-          minHeight: "100vh",
+          display: 'flex',
+          justifyContent: 'center',
+          alignItems: 'center',
+          minHeight: '100vh',
         }}
       >
         <CircularProgress />
@@ -66,42 +61,42 @@ function App() {
         <Router>
           <Routes>
             {/* Rutas Públicas */}
-            <Route
-              path="/"
+            <Route 
+              path="/" 
               element={
                 <PublicRoute>
                   <Landing />
                 </PublicRoute>
-              }
+              } 
             />
-            <Route
-              path="/login"
+            <Route 
+              path="/login" 
               element={
                 <PublicRoute>
                   <Login />
                 </PublicRoute>
-              }
+              } 
             />
-            <Route
-              path="/signup"
+            <Route 
+              path="/signup" 
               element={
                 <PublicRoute>
                   <Signup />
                 </PublicRoute>
-              }
+              } 
             />
-            <Route
-              path="/forgot-password"
+            <Route 
+              path="/forgot-password" 
               element={
                 <PublicRoute>
                   <ForgotPassword />
                 </PublicRoute>
-              }
+              } 
             />
-
+            
             {/* Página de acceso denegado */}
             <Route path="/unauthorized" element={<Unauthorized />} />
-
+            
             {/* Rutas Protegidas del Dashboard */}
             <Route
               path="/dashboard"
@@ -112,6 +107,7 @@ function App() {
               }
             >
               <Route index element={<Dashboard />} />
+              
               {/* Analytics Routes */}
               <Route
                 path="analytics-dashboard"
@@ -121,6 +117,7 @@ function App() {
                   </ProtectedRoute>
                 }
               />
+              
               {/* Widget Routes */}
               <Route
                 path="statistics"
@@ -146,6 +143,7 @@ function App() {
                   </ProtectedRoute>
                 }
               />
+              
               {/* User Management Routes */}
               <Route
                 path="users"
@@ -171,6 +169,7 @@ function App() {
                   </ProtectedRoute>
                 }
               />
+              
               {/* System Routes */}
               <Route
                 path="modules"
@@ -188,6 +187,7 @@ function App() {
                   </ProtectedRoute>
                 }
               />
+              
               {/* Application Routes */}
               <Route
                 path="customers"
@@ -237,10 +237,12 @@ function App() {
                   </ProtectedRoute>
                 }
               />
+              
               {/* Profile Route - Accesible para todos los usuarios autenticados */}
               <Route path="profile" element={<div>Profile Page</div>} />
+              }
             </Route>
-
+            
             {/* Fallback - Redirigir a landing si no está autenticado, o dashboard si lo está */}
             <Route path="*" element={<Navigate to="/" replace />} />
           </Routes>

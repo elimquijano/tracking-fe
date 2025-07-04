@@ -112,7 +112,9 @@ export const UserPermissions = () => {
   const loadModules = async () => {
     try {
       const response = await modulesAPI.getAll();
-      setModules(response.data.data || []);
+      const modulesData =
+        response.data?.data?.data || response.data?.data || [];
+      setModules(modulesData);
     } catch (error) {
       console.error("Error loading modules:", error);
     }
