@@ -54,6 +54,7 @@ import {
   updateTraccar,
 } from "../utils/common";
 import { Link } from "react-router-dom";
+import { useAuth } from "../contexts/AuthContext";
 
 const columns = [
   { id: "name", label: "NOMBRE", minWidth: 10, key: 2 },
@@ -72,6 +73,7 @@ const colores = [
 ];
 
 export const GeozonasPage = () => {
+  const { hasPermission } = useAuth();
   const [polygonPoints, setPolygonPoints] = useState([]);
   const [circleCenter, setCircleCenter] = useState(null);
   const [drawingMode, setDrawingMode] = useState(null);
@@ -470,40 +472,42 @@ export const GeozonasPage = () => {
           })}
         </MapContainer>
       </Paper>
-      <Paper
-        style={{
-          position: "absolute",
-          top: "20px",
-          left: "20px",
-          zIndex: 1000,
-          margin: "10px",
-          display: "flex",
-          gap: "10px",
-        }}
-      >
-        <IconButton onClick={() => handleSetDrawingMode("polygon")}>
-          <PolylineIcon />
-        </IconButton>
-        <IconButton onClick={() => handleSetDrawingMode("circle")}>
-          <CircleIcon />
-        </IconButton>
-        {drawingMode === "polygon" && polygonPoints.length > 0 && (
-          <>
-            <IconButton onClick={handlePolygonComplete}>
-              <CheckIcon />
-            </IconButton>
-            <IconButton onClick={handleUndo}>
-              <UndoIcon />
-            </IconButton>
-            <IconButton onClick={handleRedo}>
-              <RedoIcon />
-            </IconButton>
-            <IconButton onClick={handleClearDrawing}>
-              <ClearIcon />
-            </IconButton>
-          </>
-        )}
-      </Paper>
+      {hasPermission("transporte.geozonas.create") && (
+        <Paper
+          style={{
+            position: "absolute",
+            top: "20px",
+            left: "20px",
+            zIndex: 1000,
+            margin: "10px",
+            display: "flex",
+            gap: "10px",
+          }}
+        >
+          <IconButton onClick={() => handleSetDrawingMode("polygon")}>
+            <PolylineIcon />
+          </IconButton>
+          <IconButton onClick={() => handleSetDrawingMode("circle")}>
+            <CircleIcon />
+          </IconButton>
+          {drawingMode === "polygon" && polygonPoints.length > 0 && (
+            <>
+              <IconButton onClick={handlePolygonComplete}>
+                <CheckIcon />
+              </IconButton>
+              <IconButton onClick={handleUndo}>
+                <UndoIcon />
+              </IconButton>
+              <IconButton onClick={handleRedo}>
+                <RedoIcon />
+              </IconButton>
+              <IconButton onClick={handleClearDrawing}>
+                <ClearIcon />
+              </IconButton>
+            </>
+          )}
+        </Paper>
+      )}
       <Paper sx={{ width: "100%", overflow: "hidden", padding: "20px" }}>
         <TableContainer sx={{ maxHeight: 300, overflowY: "auto" }}>
           {totalItems > 0 ? (
@@ -549,32 +553,38 @@ export const GeozonasPage = () => {
                         >
                           <RemoveRedEye />
                         </Button>
-                        <Button
-                          component={Link}
-                          to={`/dashboard/transporte/geozonas/dispositivos/${row.id}`} // La prop 'to' se pasa directamente al componente Link
-                          variant="contained"
-                          color="success"
-                          aria-label={`Ver geozonas de ${row.name}`} // Es una buena práctica de accesibilidad
-                        >
-                          <DirectionsCar />
-                        </Button>
-                        <Button
-                          variant="contained"
-                          color="warning"
-                          onClick={() => {
-                            handleOpenModal2();
-                            handleEditar(row);
-                          }}
-                        >
-                          <EditIcon />
-                        </Button>
-                        <Button
-                          variant="contained"
-                          color="error"
-                          onClick={() => handleDeleteGeoZone(row)}
-                        >
-                          <DeleteIcon />
-                        </Button>
+                        {hasPermission("geozonas.dispositivos.view") && (
+                          <Button
+                            component={Link}
+                            to={`/dashboard/transporte/geozonas/${row.id}`} // La prop 'to' se pasa directamente al componente Link
+                            variant="contained"
+                            color="success"
+                            aria-label={`Ver geozonas de ${row.name}`} // Es una buena práctica de accesibilidad
+                          >
+                            <DirectionsCar />
+                          </Button>
+                        )}
+                        {hasPermission("transporte.geozonas.edit") && (
+                          <Button
+                            variant="contained"
+                            color="warning"
+                            onClick={() => {
+                              handleOpenModal2();
+                              handleEditar(row);
+                            }}
+                          >
+                            <EditIcon />
+                          </Button>
+                        )}
+                        {hasPermission("transporte.geozonas.delete") && (
+                          <Button
+                            variant="contained"
+                            color="error"
+                            onClick={() => handleDeleteGeoZone(row)}
+                          >
+                            <DeleteIcon />
+                          </Button>
+                        )}
                       </TableCell>
                     </TableRow>
                   );

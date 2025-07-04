@@ -36,13 +36,14 @@ import {
   Tune,
 } from "@mui/icons-material";
 import { Circle as LeafletCircle } from "react-leaflet";
-import { exportToExcel, getTraccar } from "../utils/common";
+import { getTraccar } from "../utils/common";
 import { notificationSwal } from "../utils/swal-helpers";
-import { columnsTPositionsList } from "../utils/exportColumns";
+import { columnsTPositionsList } from "../utils/ExportColumns";
 import RotatedMarker from "../components/RotatedMarker";
 import { theme } from "../theme/theme";
+import { exportToExcel } from "../utils/exportToExcel";
 
-const Statistics = () => {
+export const HistorialDeRecorridoPage = () => {
   const [filteredRows, setFilteredRows] = useState([]);
   const [searchFilter, setSearchFilter] = useState({
     date_filter: "today",
@@ -713,6 +714,3 @@ const Statistics = () => {
     </Box>
   );
 };
-
-
-export default Statistics;

@@ -37,6 +37,7 @@ import {
   postTraccar,
 } from "../utils/common";
 import { Add } from "@mui/icons-material";
+import { useAuth } from "../contexts/AuthContext";
 
 const columns = [
   { id: "name", label: "NOMBRE", minWidth: 170, key: 1 },
@@ -45,6 +46,7 @@ const columns = [
 
 export const DispositivosGeozonaPage = () => {
   const { id } = useParams();
+  const { hasPermission } = useAuth();
   const namePage1 = "Dispositivos";
   const namePage2 = "Geozona";
   const [vehicles, setVehicles] = useState([]);
@@ -318,18 +320,20 @@ export const DispositivosGeozonaPage = () => {
     <Box sx={{ p: 2 }}>
       {/* SECCIÓN DE FILTROS Y ACCIÓN PRINCIPAL */}
       <Stack spacing={2} sx={{ mb: 3 }}>
-        <Button
-          startIcon={<Add />}
-          onClick={handleOpenModal1}
-          variant="contained"
-          disabled={loading}
-          sx={{
-            alignSelf: "flex-start",
-            background: "linear-gradient(135deg, #673ab7 0%, #9c27b0 100%)",
-          }}
-        >
-          Asignar {namePage1} a {namePage2}
-        </Button>
+        {hasPermission("geozonas.dispositivos.create") && (
+          <Button
+            startIcon={<Add />}
+            onClick={handleOpenModal1}
+            variant="contained"
+            disabled={loading}
+            sx={{
+              alignSelf: "flex-start",
+              background: "linear-gradient(135deg, #673ab7 0%, #9c27b0 100%)",
+            }}
+          >
+            Asignar {namePage1} a {namePage2}
+          </Button>
+        )}
 
         <Grid container spacing={2} alignItems="flex-end">
           <Grid item xs={12} md={8}>
@@ -413,13 +417,15 @@ export const DispositivosGeozonaPage = () => {
                       </TableCell>
                     ))}
                     <TableCell align="center">
-                      <Button
-                        variant="contained"
-                        color="error"
-                        onClick={() => handleEliminar(row)}
-                      >
-                        <DeleteIcon />
-                      </Button>
+                      {hasPermission("geozonas.dispositivos.delete") && (
+                        <Button
+                          variant="contained"
+                          color="error"
+                          onClick={() => handleEliminar(row)}
+                        >
+                          <DeleteIcon />
+                        </Button>
+                      )}
                     </TableCell>
                   </TableRow>
                 ))}
@@ -525,4 +531,4 @@ export const DispositivosGeozonaPage = () => {
       </Dialog>
     </Box>
   );
-}
+};

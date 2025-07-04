@@ -14,77 +14,62 @@ import {
   TableHead,
   TableRow,
   Box,
-  Grid,
   Typography,
+  Grid,
 } from "@mui/material";
 import SearchIcon from "@mui/icons-material/Search";
 import DownloadIcon from "@mui/icons-material/Download";
 import CleaningServicesIcon from "@mui/icons-material/CleaningServices";
-import { exportToExcel } from "../utils/exportToExcel";
+import ArrowBackIcon from "@mui/icons-material/ArrowBack";
 import { getTraccar } from "../utils/common";
+import { exportToExcel } from "../utils/exportToExcel";
+import { columnsReportTraccarViajes } from "../utils/ExportColumns";
 import { notificationSwal } from "../utils/swal-helpers";
-import { columnsReportTraccarEventos } from "../utils/ExportColumns";
-
-const types = [
-  { id: "allEvents", name: "Todos los eventos" },
-  { id: "deviceOnline", name: "Dispositivo en línea" },
-  { id: "deviceUnknown", name: "Dispositivo desconocido" },
-  { id: "deviceOffline", name: "Dispositivo fuera de línea" },
-  { id: "deviceStopped", name: "Dispositivo detenido" },
-  { id: "deviceMoving", name: "Dispositivo en movimiento" },
-  { id: "deviceOverspeed", name: "Dispositivo excediendo velocidad" },
-  { id: "geofenceEnter", name: "Ingreso a geocerca" },
-  { id: "geofenceExit", name: "Salida de geocerca" },
-  { id: "alarm", name: "Alarma" },
-  { id: "ignitionOn", name: "Encendido del motor" },
-  { id: "ignitionOff", name: "Apagado del motor" },
-  { id: "maintenance", name: "Mantenimiento" },
-  { id: "commandResult", name: "Resultado de comando" },
-  { id: "deviceFuelDrop", name: "Caída de combustible" },
-  { id: "lowDCVoltage", name: "Bajo voltaje DC" },
-  { id: "highDCVoltage", name: "Alto voltaje DC" },
-  { id: "lowBatteryLevel", name: "Bajo nivel de batería" },
-  { id: "hardAcceleration", name: "Aceleración brusca" },
-  { id: "hardBraking", name: "Frenado brusco" },
-  { id: "hardCornering", name: "Curva brusca" },
-  { id: "powerCut", name: "Corte de energía" },
-  { id: "powerRestored", name: "Energía restaurada" },
-  { id: "tow", name: "Remolque" },
-  { id: "immobilizer", name: "Inmovilización" },
-  { id: "sos", name: "SOS" },
-  { id: "noMovement", name: "Sin movimiento" },
-  { id: "aggressiveDriving", name: "Conducción agresiva" },
-  { id: "idling", name: "En espera" },
-  { id: "accident", name: "Accidente" },
-];
-
-const typesAlarms = [
-  { id: "ignitionOn", name: "Encendido" },
-  { id: "ignitionOff", name: "Apagado" },
-  { id: "door", name: "Puerta" },
-  { id: "alarm", name: "Alarma" },
-  { id: "maintenance", name: "Mantenimiento" },
-  { id: "geofenceEnter", name: "Ingreso a geocerca" },
-  { id: "geofenceExit", name: "Salida de geocerca" },
-  { id: "overspeed", name: "Exceso de velocidad" },
-];
 
 const columns = [
   { id: "deviceId", label: "VEHICULO", minWidth: 170, key: 1 },
-  { id: "eventTime", label: "HORA FIJO", minWidth: 170, key: 1 },
-  { id: "type", label: "TIPO", minWidth: 170, key: 1 },
-  { id: "attributes", label: "DATOS", minWidth: 170, key: 1 },
-  { id: "geofenceId", label: "GEOCERCA", minWidth: 170, key: 1 },
-  { id: "maintenanceId", label: "MANTENIMIENTO", minWidth: 170, key: 1 },
+  { id: "startTime", label: "HORA DE INICIO", minWidth: 170, key: 2 },
+  { id: "endTime", label: "HORA DE FIN", minWidth: 170, key: 3 },
+  { id: "distance", label: "DISTANCIA", minWidth: 170, key: 4 },
+  { id: "averageSpeed", label: "VELOCIDAD PROMEDIO", minWidth: 170, key: 5 },
+  { id: "startOdometer", label: "ODOMETRO INICIAL", minWidth: 170, key: 6 },
+  { id: "startAddress", label: "DIRECCION INICIAL", minWidth: 170, key: 7 },
+  { id: "endOdometer", label: "ODOMETRO FINAL", minWidth: 170, key: 8 },
+  { id: "endAddress", label: "DIRECCION FINAL", minWidth: 170, key: 9 },
+  { id: "maxSpeed", label: "VELOCIDAD MAXIMA", minWidth: 170, key: 10 },
+  { id: "duration", label: "DURACION", minWidth: 170, key: 11 },
+  { id: "spentFuel", label: "COMBUSTIBLE GASTADO", minWidth: 170, key: 12 },
+  { id: "driverName", label: "CONDUCTOR", minWidth: 170, key: 13 },
 ];
 
-export const EventosPage = () => {
+const MostrarCalle = ({ row }) => {
+  const [calle, setCalle] = useState("");
+
+  const handleClick = async () => {
+    const response = await getTraccar(
+      `server/geocode?latitude=${row.endLat}&longitude=${row.endLon}`
+    );
+    if (response) {
+      setCalle(response.data);
+    } else {
+      setCalle("No se pudo obtener la dirección");
+    }
+  };
+
+  return (
+    <>
+      {calle ? (
+        <Typography>{calle}</Typography>
+      ) : (
+        <Button onClick={handleClick}>Mostrar Calle</Button>
+      )}
+    </>
+  );
+};
+
+export const ViajesPage = () => {
   const [vehiculos, setVehiculos] = useState([]);
-  const [geocercas, setGeocercas] = useState([]);
-  const [searchFilter, setSearchFilter] = useState({
-    date_filter: "today",
-    type: "allEvents",
-  });
+  const [searchFilter, setSearchFilter] = useState({ date_filter: "today" });
   const [data, setData] = useState([]);
   const [totalItems, setTotalItems] = useState(0);
 
@@ -100,18 +85,6 @@ export const EventosPage = () => {
       }
     };
 
-    const fetchGeocercas = async () => {
-      try {
-        const result = await getTraccar("/geofences");
-        if (result.status == 200) {
-          setGeocercas(result.data);
-        }
-      } catch (error) {
-        console.error("Error fetching data:", error);
-      }
-    };
-
-    fetchGeocercas();
     fetchVehiculos();
   }, []);
 
@@ -125,25 +98,21 @@ export const EventosPage = () => {
 
     try {
       const result = await getTraccar(
-        "/reports/events" +
-          construirUrl({ ...searchFilter, from: from, to: to })
+        "/reports/trips" + construirUrl({ ...searchFilter, from: from, to: to })
       );
       if (result.status == 200) {
         const dataParsed = result.data.map((item) => ({
           ...item,
-          eventTime: restarCincoHoras(item.eventTime),
-          deviceId: vehiculos.find((vehiculo) => vehiculo.id == item.deviceId)
+          startTime: restarCincoHoras(item.startTime),
+          endTime: restarCincoHoras(item.endTime),
+          deviceId: vehiculos.find((vehiculo) => vehiculo.id === item.deviceId)
             ?.name,
-          geofenceId: geocercas.find(
-            (geocerca) => geocerca.id == item.geofenceId
-          )?.name,
-          type: types.find((type) => type.id == item.type)?.name,
-          attributes: item.attributes.alarm
-            ? typesAlarms.find((t) => t.id == item.attributes.alarm)?.name
-            : "",
-          maintenanceId: [].find(
-            (mantenimiento) => mantenimiento.id == item.maintenanceId
-          )?.name,
+          distance: (item.distance / 1000).toFixed(2) + " km",
+          averageSpeed: (item.averageSpeed * 1.852).toFixed(2) + " km/h",
+          maxSpeed: (item.maxSpeed * 1.852).toFixed(2) + " km/h",
+          startOdometer: (item.startOdometer / 1000).toFixed(2) + " km",
+          endOdometer: (item.endOdometer / 1000).toFixed(2) + " km",
+          duration: formatDuration(item.duration),
         }));
         setData(dataParsed);
         if (dataParsed.length === 0) {
@@ -177,7 +146,7 @@ export const EventosPage = () => {
 
   function CleanFilter() {
     setData([]);
-    setSearchFilter({ date_filter: "today", type: "allEvents" });
+    setSearchFilter({ date_filter: "today" });
   }
 
   const handleSearchChange = (event) => {
@@ -194,7 +163,7 @@ export const EventosPage = () => {
       const dataParse = data.map((item) => ({
         ...item,
       }));
-      exportToExcel(dataParse, columnsReportTraccarEventos, "Eventos");
+      exportToExcel(dataParse, columnsReportTraccarViajes, "Viajes");
     } catch (error) {
       console.error("Error al exportar los datos:", error);
     }
@@ -297,13 +266,22 @@ export const EventosPage = () => {
       return "Error en fecha";
     }
   };
+
+  const formatDuration = (duration) => {
+    const totalSeconds = Math.floor(duration / 1000); // Convertir milisegundos a segundos
+    const hours = Math.floor(totalSeconds / 3600); // Calcular horas
+    const minutes = Math.floor((totalSeconds % 3600) / 60); // Calcular minutos
+
+    return `${hours} h ${minutes} m`; // Formatear la cadena de salida
+  };
+
   return (
     <Box>
       <Paper className="form" sx={{ padding: 2, marginBottom: 2 }}>
         <Grid container spacing={2} alignItems="center">
           <Grid item xs={12} sm={9}>
             <Grid container spacing={2}>
-              <Grid item xs={12} sm={4}>
+              <Grid item xs={12} sm={6}>
                 <Typography mb={1}>Vehículo:</Typography>
                 <Autocomplete
                   size="small"
@@ -323,7 +301,7 @@ export const EventosPage = () => {
                   renderInput={(params) => <TextField {...params} fullWidth />}
                 />
               </Grid>
-              <Grid item xs={12} sm={4}>
+              <Grid item xs={12} sm={6}>
                 <Typography mb={1}>Periodo:</Typography>
                 <Select
                   id="date_filter"
@@ -340,23 +318,6 @@ export const EventosPage = () => {
                   <MenuItem value="this_month">Este mes</MenuItem>
                   <MenuItem value="prev_month">Mes Anterior</MenuItem>
                 </Select>
-              </Grid>
-              <Grid item xs={12} sm={4}>
-                <Typography mb={1}>Tipos de Evento:</Typography>
-                <Autocomplete
-                  size="small"
-                  fullWidth
-                  options={types}
-                  getOptionLabel={(option) => option.name}
-                  onChange={(event, newValue) => {
-                    setSearchFilter({
-                      ...searchFilter,
-                      type: newValue ? newValue.id : "",
-                    });
-                  }}
-                  value={types.find((t) => t.id === searchFilter.type) || null}
-                  renderInput={(params) => <TextField {...params} fullWidth />}
-                />
               </Grid>
             </Grid>
           </Grid>
@@ -416,8 +377,30 @@ export const EventosPage = () => {
                 {data.map((row) => (
                   <TableRow hover role="checkbox" tabIndex={-1} key={row.id}>
                     {columns.map((column) => (
-                      <TableCell key={column.id} align={column.align}>
-                        {row[column.id] || ""}
+                      <TableCell
+                        key={column.id}
+                        align={column.align}
+                        sx={{ position: "relative" }}
+                      >
+                        {column.id === "course" ? (
+                          <Box
+                            position="absolute"
+                            sx={{
+                              display: "flex",
+                              alignItems: "center",
+                              justifyContent: "center",
+                              transform: `translate(-50%, -50%) rotate(${
+                                row[column.id] + 90 || 0
+                              }deg)`,
+                            }}
+                          >
+                            <ArrowBackIcon color="secondary" />
+                          </Box>
+                        ) : column.id === "endAddress" ? (
+                          <MostrarCalle row={row} />
+                        ) : (
+                          row[column.id]
+                        )}
                       </TableCell>
                     ))}
                   </TableRow>
@@ -427,7 +410,7 @@ export const EventosPage = () => {
           </TableContainer>
         ) : (
           <Box p={2} bgcolor="warning.light" color="warning.contrastText">
-            No se encontraron resultados.
+            <Typography>No se encontraron resultados.</Typography>
           </Box>
         )}
       </Paper>

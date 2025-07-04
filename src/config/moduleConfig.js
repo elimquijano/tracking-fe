@@ -40,6 +40,8 @@ import {
   DirectionsBus,
 } from "@mui/icons-material";
 import { GeozonasPage } from "../pages/GeozonasPage";
+import { ViajesPage } from "../pages/ViajesPage";
+import { HistorialDeRecorridoPage } from "../pages/HistorialRecorridoPage";
 
 // Mapeo de componentes - AQUÍ AGREGAS NUEVOS COMPONENTES
 export const componentMap = {
@@ -60,10 +62,12 @@ export const componentMap = {
   Modules,
   SettingsPage,
   // Nuevos componentes
-  EventosPage,
   MapaPage,
   GeozonasPage,
   DispositivosGeozonaPage,
+  EventosPage,
+  ViajesPage,
+  HistorialDeRecorridoPage,
 };
 
 // Mapeo de iconos - AQUÍ TIENES TODOS LOS ICONOS DISPONIBLES

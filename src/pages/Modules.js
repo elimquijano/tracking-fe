@@ -101,7 +101,8 @@ export const Modules = () => {
       };
       const response = await modulesAPI.getAll(params);
       // Fix: Extract the actual modules array from the nested response
-      const modulesData = response.data?.data?.data || response.data?.data || [];
+      const modulesData =
+        response.data?.data?.data || response.data?.data || [];
       setModules(modulesData);
     } catch (error) {
       console.error("Error loading modules:", error);
@@ -311,7 +312,9 @@ export const Modules = () => {
     </TreeItem>
   );
 
-  const parentModules = modules.filter((module) => !module.parent_id);
+  const parentModules = modules.filter(
+    (module) => module.type === "module" || module.type === "group"
+  );
 
   if (loading && modules.length === 0) {
     return (
@@ -505,8 +508,14 @@ export const Modules = () => {
                           />
                         </TableCell>
                         <TableCell>
-                          <Typography variant="body2" sx={{ fontFamily: 'monospace', fontSize: '0.75rem' }}>
-                            {module.route || '-'}
+                          <Typography
+                            variant="body2"
+                            sx={{
+                              fontFamily: "monospace",
+                              fontSize: "0.75rem",
+                            }}
+                          >
+                            {module.route || "-"}
                           </Typography>
                         </TableCell>
                         <TableCell>
@@ -666,7 +675,10 @@ export const Modules = () => {
                 label="Componente"
                 value={formData.component}
                 onChange={(e) =>
-                  setFormData((prev) => ({ ...prev, component: e.target.value }))
+                  setFormData((prev) => ({
+                    ...prev,
+                    component: e.target.value,
+                  }))
                 }
                 helperText="Ej: ProductList"
               />
@@ -677,7 +689,10 @@ export const Modules = () => {
                 label="Permiso Específico"
                 value={formData.permission}
                 onChange={(e) =>
-                  setFormData((prev) => ({ ...prev, permission: e.target.value }))
+                  setFormData((prev) => ({
+                    ...prev,
+                    permission: e.target.value,
+                  }))
                 }
                 helperText="Ej: inventory.products.view"
               />
@@ -743,13 +758,16 @@ export const Modules = () => {
               </FormControl>
             </Grid>
             <Grid item xs={12}>
-              <Box sx={{ display: 'flex', gap: 2 }}>
+              <Box sx={{ display: "flex", gap: 2 }}>
                 <FormControlLabel
                   control={
                     <Switch
                       checked={formData.show_in_menu}
                       onChange={(e) =>
-                        setFormData((prev) => ({ ...prev, show_in_menu: e.target.checked }))
+                        setFormData((prev) => ({
+                          ...prev,
+                          show_in_menu: e.target.checked,
+                        }))
                       }
                     />
                   }
@@ -760,7 +778,10 @@ export const Modules = () => {
                     <Switch
                       checked={formData.auto_create_permissions}
                       onChange={(e) =>
-                        setFormData((prev) => ({ ...prev, auto_create_permissions: e.target.checked }))
+                        setFormData((prev) => ({
+                          ...prev,
+                          auto_create_permissions: e.target.checked,
+                        }))
                       }
                     />
                   }
