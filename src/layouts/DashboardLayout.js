@@ -25,6 +25,7 @@ import {
   Switch,
   FormControlLabel,
   Tooltip,
+  CircularProgress,
 } from "@mui/material";
 import {
   Menu as MenuIcon,
@@ -41,12 +42,14 @@ import {
   ChevronLeft as ChevronLeftIcon,
   ChevronRight as ChevronRightIcon,
 } from "@mui/icons-material";
-import { useNavigate, useLocation, Outlet } from "react-router-dom";
+import { useNavigate, useLocation, Outlet, Navigate } from "react-router-dom";
 import { useAuth } from "../contexts/AuthContext";
 import { useTheme as useCustomTheme } from "../contexts/ThemeContext";
 import { notificationsAPI, modulesAPI } from "../utils/api";
 import { getIcon } from "../config/moduleConfig";
 import { WebSocketProvider } from "../contexts/SocketContext";
+import { DynamicRoutes } from "../routes/DynamicRouteGenerator";
+import { findFirstValidRoute } from "../utils/navigationUtils";
 
 const drawerWidth = 260;
 const collapsedDrawerWidth = 64;
@@ -129,7 +132,15 @@ export const DashboardLayout = () => {
     try {
       setLoading(true);
       const response = await modulesAPI.menu();
-      setMenuModules(response.data.data || []);
+      const modules = response.data.data || [];
+      setMenuModules(modules);
+      const firstRoute = findFirstValidRoute(modules);
+      const isAtDashboardRoot =
+        location.pathname === "/dashboard" ||
+        location.pathname === "/dashboard/";
+      if (isAtDashboardRoot && firstRoute && firstRoute !== "/dashboard") {
+        navigate(firstRoute, { replace: true });
+      }
     } catch (error) {
       console.error("Error loading menu modules:", error);
       // Fallback a menú estático si falla la API
@@ -785,7 +796,23 @@ export const DashboardLayout = () => {
             }),
           }}
         >
-          <Outlet />
+          {loading ? (
+            <Box
+              sx={{
+                display: "flex",
+                justifyContent: "center",
+                alignItems: "center",
+                height: "calc(100vh - 64px)",
+              }}
+            >
+              <CircularProgress />
+            </Box>
+          ) : // Si menuModules está vacío después de cargar, significa que el usuario no tiene acceso a NADA.
+          menuModules.length > 0 ? (
+            <DynamicRoutes navConfig={menuModules} />
+          ) : (
+            <Navigate to="/unauthorized" replace />
+          )}
         </Box>
       </Box>
     </WebSocketProvider>

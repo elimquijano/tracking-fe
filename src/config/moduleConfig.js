@@ -18,6 +18,11 @@ import { Calendar } from "../pages/Calendar";
 import { Modules } from "../pages/Modules";
 import { Settings as SettingsPage } from "../pages/Settings";
 
+// Importar nuevos componentes
+import { EventosPage } from "../pages/EventosPage";
+import { MapaPage } from "../pages/MapaPage";
+import { DispositivosGeozonaPage } from "../pages/DispositivosGeozonaPage";
+
 // Importar iconos de Material-UI
 import {
   Dashboard,
@@ -31,7 +36,10 @@ import {
   Mail,
   Menu,
   Article,
+  Map,
+  DirectionsBus,
 } from "@mui/icons-material";
+import { GeozonasPage } from "../pages/GeozonasPage";
 
 // Mapeo de componentes - AQUÍ AGREGAS NUEVOS COMPONENTES
 export const componentMap = {
@@ -51,6 +59,11 @@ export const componentMap = {
   Calendar,
   Modules,
   SettingsPage,
+  // Nuevos componentes
+  EventosPage,
+  MapaPage,
+  GeozonasPage,
+  DispositivosGeozonaPage,
 };
 
 // Mapeo de iconos - AQUÍ TIENES TODOS LOS ICONOS DISPONIBLES
@@ -65,6 +78,9 @@ export const iconMap = {
   Home: <Home />,
   Mail: <Mail />,
   Menu: <Menu />,
+  Map: <Map />,
+  Article: <Article />,
+  Bus: <DirectionsBus />,
 };
 
 // Función para obtener icono por nombre

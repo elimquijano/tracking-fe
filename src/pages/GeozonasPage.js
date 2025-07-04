@@ -71,7 +71,7 @@ const colores = [
   { id: "pink", name: "Rosa" },
 ];
 
-const Geozonas = () => {
+export const GeozonasPage = () => {
   const [polygonPoints, setPolygonPoints] = useState([]);
   const [circleCenter, setCircleCenter] = useState(null);
   const [drawingMode, setDrawingMode] = useState(null);
@@ -551,7 +551,7 @@ const Geozonas = () => {
                         </Button>
                         <Button
                           component={Link}
-                          to={`/dashboard/geozonas/${row.id}`} // La prop 'to' se pasa directamente al componente Link
+                          to={`/dashboard/transporte/geozonas/dispositivos/${row.id}`} // La prop 'to' se pasa directamente al componente Link
                           variant="contained"
                           color="success"
                           aria-label={`Ver geozonas de ${row.name}`} // Es una buena práctica de accesibilidad
@@ -807,5 +807,3 @@ const MapEvents = ({ onClick }) => {
   });
   return null;
 };
-
-export default Geozonas;

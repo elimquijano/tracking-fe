@@ -54,7 +54,7 @@ L.Icon.Default.mergeOptions({
 
 const columns = [{ id: "name", label: "Placa", minWidth: 5, key: 1 }];
 
-const Mapa = () => {
+export const MapaPage = () => {
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
   const [showTable, setShowTable] = useState(false);
@@ -840,5 +840,3 @@ const Mapa = () => {
     </Box>
   );
 };
-
-export default Mapa;

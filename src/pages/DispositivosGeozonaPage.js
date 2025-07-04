@@ -8,7 +8,6 @@ import TableContainer from "@mui/material/TableContainer";
 import TableHead from "@mui/material/TableHead";
 import TableRow from "@mui/material/TableRow";
 import Button from "@mui/material/Button";
-import Modal from "@mui/material/Modal";
 import DeleteIcon from "@mui/icons-material/Delete";
 import SearchIcon from "@mui/icons-material/Search";
 import CleaningServicesIcon from "@mui/icons-material/CleaningServices";
@@ -44,7 +43,7 @@ const columns = [
   { id: "uniqueId", label: "IDENTIFICADOR", minWidth: 170, key: 1 },
 ];
 
-const DispositivosGeozonaPage = () => {
+export const DispositivosGeozonaPage = () => {
   const { id } = useParams();
   const namePage1 = "Dispositivos";
   const namePage2 = "Geozona";
@@ -527,5 +526,3 @@ const DispositivosGeozonaPage = () => {
     </Box>
   );
 }
-
-export default DispositivosGeozonaPage;
