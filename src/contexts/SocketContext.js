@@ -98,7 +98,9 @@ export const WebSocketProvider = ({ children }) => {
         const data = JSON.parse(event.data);
         console.log("Mensaje recibido:", data);
         if (data.devices) {
-          setDevices(data.devices);
+          setDevices((prevDevices) =>
+            mergeDeviceUpdates(prevDevices, data.devices)
+          );
         }
         if (data.event) {
           const eventDetails = data.event;
@@ -296,6 +298,28 @@ export const WebSocketProvider = ({ children }) => {
         return `info.${property}`; // Azul
     }
   };
+
+  /**
+   * Combina un estado actual de dispositivos con una nueva lista.
+   * @param {Array<Object>} currentDevices - El array actual de dispositivos.
+   * @param {Array<Object>} newDevicesUpdate - El nuevo array con las actualizaciones.
+   * @returns {Array<Object>} Un nuevo array con los dispositivos combinados.
+   */
+  function mergeDeviceUpdates(currentDevices, newDevicesUpdate) {
+    const deviceMap = new Map(
+      currentDevices.map((device) => [device.id, device])
+    );
+
+    for (const newDeviceData of newDevicesUpdate) {
+      // Si el dispositivo ya existe, combina sus datos. Si no, lo añade.
+      // Usamos el spread operator para asegurarnos de que si llegan propiedades parciales,
+      // no se pierda el resto de la información del objeto.
+      const existingDevice = deviceMap.get(newDeviceData.id) || {};
+      deviceMap.set(newDeviceData.id, { ...existingDevice, ...newDeviceData });
+    }
+
+    return Array.from(deviceMap.values());
+  }
 
   return (
     <WebSocketContext.Provider
