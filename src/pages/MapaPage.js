@@ -11,6 +11,7 @@ import {
   Marker,
   Polygon,
   Polyline,
+  useMap,
 } from "react-leaflet";
 import {
   Paper,
@@ -55,21 +56,25 @@ L.Icon.Default.mergeOptions({
 const columns = [{ id: "name", label: "Placa", minWidth: 5, key: 1 }];
 
 export const MapaPage = () => {
+  const [map, setMap] = useState(null);
+  console.log("map:", map);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
   const [showTable, setShowTable] = useState(false);
   const [vehiculos, setVehiculos] = useState([]);
   const [filteredVehiculos, setFilteredVehiculos] = useState([]);
   const [vehiculoActual, setVehiculoActual] = useState(null);
-  const [mapCenter, setMapCenter] = useState([-9.9306, -76.2422]); // Coordenadas de Huánuco
-  const [mapZoom, setMapZoom] = useState(14);
-  const [mapKey, setMapKey] = useState(Date.now());
   const [statusFilter, setStatusFilter] = useState(null);
   const [grupos, setGrupos] = useState([]);
   const [geofences, setGeofences] = useState([]);
   const [selectedGroup, setSelectedGroup] = useState(null);
   const [showFilters, setShowFilters] = useState(false);
   const [routeCoordinates, setRouteCoordinates] = useState([]);
+  const [camera, setCamera] = useState({
+    lat: -9.9306,
+    lng: -76.2422,
+    zoom: 14,
+  });
 
   const isMd = useMediaQuery((theme) => theme.breakpoints.up("md"));
 
@@ -104,14 +109,14 @@ export const MapaPage = () => {
       const vehiculo = vehiculos.find(
         (vehiculo) => vehiculo.id === vehiculoActual
       );
-      setMapCenter([vehiculo.latitude, vehiculo.longitude]);
-      setMapZoom(20);
-      setMapKey(Date.now());
+      setCamera({
+        lat: vehiculo?.latitude || 0,
+        lng: vehiculo?.longitude || 0,
+        zoom: 18,
+      });
       setShowTable(false);
     } else {
-      setMapCenter([-9.9306, -76.2422]);
-      setMapZoom(14);
-      setMapKey(Date.now());
+      setCamera({ lat: -9.9306, lng: -76.2422, zoom: 14 });
     }
     setRouteCoordinates([]);
   }, [vehiculoActual]);
@@ -277,6 +282,18 @@ export const MapaPage = () => {
     } catch (error) {
       console.log("error: " + error);
     }
+  }
+
+  function CameraMapOnPoint({ lat, lng, zoom = 15 }) {
+    const map = useMap();
+
+    useEffect(() => {
+      if (lat && lng) {
+        map.flyTo([lat, lng], zoom);
+      }
+    }, [lat, lng, map]);
+
+    return null;
   }
 
   const getStatusCounts = () => {
@@ -521,10 +538,10 @@ export const MapaPage = () => {
               )}
             </Paper>
             <MapContainer
-              key={mapKey}
+              ref={setMap}
               style={{ width: "100%", height: "100%" }}
-              center={mapCenter}
-              zoom={mapZoom}
+              center={[-9.9306, -76.2422]}
+              zoom={6}
               zoomControl={false}
             >
               <LayersControl position="topright">
@@ -663,6 +680,11 @@ export const MapaPage = () => {
                   strokeColor="secondary.main"
                 />
               )}
+              <CameraMapOnPoint
+                lat={camera?.lat}
+                lng={camera?.lng}
+                zoom={camera?.zoom}
+              />
             </MapContainer>
             {vehiculoActual && (
               <Paper
