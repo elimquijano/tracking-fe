@@ -2,7 +2,8 @@ import axios from 'axios';
 import Swal from 'sweetalert2';
 
 // Configuración base de la API
-const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:8000/api';
+const API_HOST = process.env.REACT_APP_API_URL || 'http://localhost:8000/';
+const API_BASE_URL = API_HOST + 'api';
 
 // Crear instancia de axios
 const api = axios.create({

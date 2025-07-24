@@ -1,6 +1,6 @@
 import React, { createContext, useContext, useState, useEffect } from "react";
 import { authAPI } from "../utils/api";
-import { confirmSwal, notificationSwal } from "../utils/swal-helpers";
+import { notificationSwal } from "../utils/swal-helpers";
 import { createSession, encodeBase64 } from "../utils/common";
 
 const AuthContext = createContext(undefined);
@@ -94,12 +94,6 @@ export const AuthProvider = ({ children }) => {
       localStorage.setItem("auth_token", responseData.token);
       localStorage.setItem("user", JSON.stringify(userForState));
 
-      notificationSwal(
-        "Inicio de sesión exitoso",
-        `¡Bienvenido ${userForState.first_name}!`,
-        "success"
-      );
-
       createSession("SESSION_TOKEN", encodeBase64(email, password));
 
       return true;
@@ -158,40 +152,23 @@ export const AuthProvider = ({ children }) => {
   };
 
   const logout = async () => {
-    const userConfirmed = await confirmSwal(
-      "¿Estás seguro?",
-      "Se cerrará tu sesión actual.",
-      {
-        // Opciones personalizadas
-        confirmButtonText: "Sí, cerrar sesión",
-        icon: "warning",
-      }
-    );
-
-    if (userConfirmed) {
-      try {
-        // Intentar logout desde API
-        await authAPI.logout();
-      } catch (error) {
-        console.error("API logout failed:", error);
-        notificationSwal(
-          "Error",
-          "No se pudo cerrar sesión desde el servidor.",
-          "error"
-        );
-      }
-
-      // Limpiar estado local
-      setUser(null);
-      localStorage.removeItem("auth_token");
-      localStorage.removeItem("user");
-
+    try {
+      // Intentar logout desde API
+      await authAPI.logout();
+    } catch (error) {
+      console.error("API logout failed:", error);
       notificationSwal(
-        "Sesión cerrada",
-        "Has cerrado sesión exitosamente.",
-        "success"
+        "Error",
+        "No se pudo cerrar sesión desde el servidor.",
+        "error"
       );
     }
+
+    // Limpiar estado local
+    setUser(null);
+    localStorage.removeItem("auth_token");
+    localStorage.removeItem("user");
+    localStorage.removeItem("SESSION_TOKEN");
   };
 
   const hasPermission = (permission) => {

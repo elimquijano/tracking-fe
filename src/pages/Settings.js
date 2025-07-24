@@ -49,7 +49,7 @@ export const Settings = () => {
     lastName: 'Doe',
     email: 'john@example.com',
     phone: '+1 234 567 8900',
-    company: 'Berry Inc.',
+    company: 'Oasis Inc.',
     position: 'Administrator',
   });
 

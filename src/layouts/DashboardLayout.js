@@ -42,7 +42,7 @@ import {
   ChevronLeft as ChevronLeftIcon,
   ChevronRight as ChevronRightIcon,
 } from "@mui/icons-material";
-import { useNavigate, useLocation, Outlet, Navigate } from "react-router-dom";
+import { useNavigate, useLocation, Navigate } from "react-router-dom";
 import { useAuth } from "../contexts/AuthContext";
 import { useTheme as useCustomTheme } from "../contexts/ThemeContext";
 import { notificationsAPI, modulesAPI } from "../utils/api";
@@ -50,6 +50,8 @@ import { getIcon } from "../config/moduleConfig";
 import { WebSocketProvider } from "../contexts/SocketContext";
 import { DynamicRoutes } from "../routes/DynamicRouteGenerator";
 import { findFirstValidRoute } from "../utils/navigationUtils";
+import Logo from "../components/Logo";
+import { confirmSwal } from "../utils/swal-helpers";
 
 const drawerWidth = 260;
 const collapsedDrawerWidth = 64;
@@ -118,7 +120,7 @@ export const DashboardLayout = () => {
           id: 1,
           type: "info",
           title: "Welcome",
-          message: "Welcome to Berry Dashboard",
+          message: "Welcome to Oasis Dashboard",
           read_at: null,
           created_at: new Date().toISOString(),
         },
@@ -182,10 +184,21 @@ export const DashboardLayout = () => {
     setNotificationAnchor(null);
   };
 
-  const handleLogout = () => {
-    logout();
-    navigate("/");
+  const handleLogout = async () => {
     handleClose();
+    const userConfirmed = await confirmSwal(
+      "¿Estás seguro?",
+      "Se cerrará tu sesión actual.",
+      {
+        // Opciones personalizadas
+        confirmButtonText: "Sí, cerrar sesión",
+        icon: "warning",
+      }
+    );
+
+    if (userConfirmed) {
+      logout();
+    }
   };
 
   const handleExpandClick = (text) => {
@@ -353,26 +366,22 @@ export const DashboardLayout = () => {
       >
         <Box
           sx={{
-            width: 28,
-            height: 28,
             borderRadius: "50%",
             background: `linear-gradient(135deg, ${theme.palette.primary.main} 0%, ${theme.palette.secondary.main} 100%)`,
             display: "flex",
             alignItems: "center",
             justifyContent: "center",
-            mr: sidebarCollapsed ? 0 : 1,
+            mr: 1,
           }}
         >
-          <Typography variant="body2" sx={{ color: "white", fontWeight: 700 }}>
-            🍇
-          </Typography>
+          <Logo height={32} />
         </Box>
         {!sidebarCollapsed && (
           <Typography
             variant="h6"
             sx={{ fontWeight: 700, color: theme.palette.primary.main }}
           >
-            BERRY
+            OASIS TECHNOLOGY
           </Typography>
         )}
       </Box>
