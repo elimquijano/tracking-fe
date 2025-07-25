@@ -69,11 +69,8 @@ export const MapaPage = () => {
   const [selectedGroup, setSelectedGroup] = useState(null);
   const [showFilters, setShowFilters] = useState(false);
   const [routeCoordinates, setRouteCoordinates] = useState([]);
-  const [camera, setCamera] = useState({
-    lat: -9.9306,
-    lng: -76.2422,
-    zoom: 7,
-  });
+  const [camera, setCamera] = useState({});
+  const [fly, setFly] = useState(false);
 
   const isMd = useMediaQuery((theme) => theme.breakpoints.up("md"));
 
@@ -84,6 +81,15 @@ export const MapaPage = () => {
     getGrupos();
     getGeofences();
     setLoading(false);
+    setCamera({
+      lat: -9.9306,
+      lng: -76.2422,
+      zoom: 7,
+    });
+    setFly(true);
+    setTimeout(() => {
+      setFly(false);
+    }, 1000);
   }, []);
 
   useEffect(() => {
@@ -108,12 +114,23 @@ export const MapaPage = () => {
       const vehiculo = devices.find(
         (vehiculo) => vehiculo.id === vehiculoActual
       );
+      setFly(true);
       setCamera({
         lat: vehiculo?.latitude || 0,
         lng: vehiculo?.longitude || 0,
         zoom: 18,
       });
       setShowTable(false);
+    } else {
+      setCamera({
+        lat: -9.9306,
+        lng: -76.2422,
+        zoom: 7,
+      });
+      setFly(true);
+      setTimeout(() => {
+        setFly(false);
+      }, 1000);
     }
     setRouteCoordinates([]);
   }, [vehiculoActual]);
@@ -697,11 +714,13 @@ export const MapaPage = () => {
                   strokeColor="secondary.main"
                 />
               )}
-              <CameraMapOnPoint
-                lat={camera?.lat}
-                lng={camera?.lng}
-                zoom={camera?.zoom}
-              />
+              {fly && (
+                <CameraMapOnPoint
+                  lat={camera?.lat}
+                  lng={camera?.lng}
+                  zoom={camera?.zoom}
+                />
+              )}
             </MapContainer>
             {vehiculoActual && (
               <Paper
