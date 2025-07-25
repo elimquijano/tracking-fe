@@ -56,11 +56,9 @@ L.Icon.Default.mergeOptions({
 const columns = [{ id: "name", label: "Placa", minWidth: 5, key: 1 }];
 
 export const MapaPage = () => {
-  const [map, setMap] = useState(null);
-  console.log("map:", map);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
-  const [showTable, setShowTable] = useState(false);
+  const [showTable, setShowTable] = useState(true);
   const [vehiculos, setVehiculos] = useState([]);
   const [filteredVehiculos, setFilteredVehiculos] = useState([]);
   const [vehiculoActual, setVehiculoActual] = useState(null);
@@ -73,7 +71,7 @@ export const MapaPage = () => {
   const [camera, setCamera] = useState({
     lat: -9.9306,
     lng: -76.2422,
-    zoom: 14,
+    zoom: 7,
   });
 
   const isMd = useMediaQuery((theme) => theme.breakpoints.up("md"));
@@ -115,8 +113,6 @@ export const MapaPage = () => {
         zoom: 18,
       });
       setShowTable(false);
-    } else {
-      setCamera({ lat: -9.9306, lng: -76.2422, zoom: 14 });
     }
     setRouteCoordinates([]);
   }, [vehiculoActual]);
@@ -151,7 +147,7 @@ export const MapaPage = () => {
   };
 
   const handleShowTable = () => {
-    setShowTable(showTable ? false : true);
+    setShowTable(!showTable);
   };
 
   const handleToggleFilters = () => {
@@ -538,10 +534,9 @@ export const MapaPage = () => {
               )}
             </Paper>
             <MapContainer
-              ref={setMap}
               style={{ width: "100%", height: "100%" }}
               center={[-9.9306, -76.2422]}
-              zoom={6}
+              zoom={2}
               zoomControl={false}
             >
               <LayersControl position="topright">
