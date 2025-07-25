@@ -44,6 +44,7 @@ import { WebSocketContext } from "../contexts/SocketContext";
 import { IconCircle } from "../components/iconCircle";
 import { getTraccar } from "../utils/common";
 import { theme } from "../theme/theme";
+import { IconEngineFilled } from "@tabler/icons-react";
 
 // Asegúrate de que los iconos de los marcadores se muestren correctamente
 delete L.Icon.Default.prototype._getIconUrl;
@@ -104,7 +105,7 @@ export const MapaPage = () => {
 
   useEffect(() => {
     if (vehiculoActual) {
-      const vehiculo = vehiculos.find(
+      const vehiculo = devices.find(
         (vehiculo) => vehiculo.id === vehiculoActual
       );
       setCamera({
@@ -292,6 +293,27 @@ export const MapaPage = () => {
     return null;
   }
 
+  const restarCincoHoras = (dateString) => {
+    if (!dateString) return "Fecha no disponible";
+    try {
+      const date = new Date(dateString);
+      const formatter = new Intl.DateTimeFormat("es-PE", {
+        timeZone: "America/Lima",
+        year: "numeric",
+        month: "2-digit",
+        day: "2-digit",
+        hour: "2-digit",
+        minute: "2-digit",
+        second: "2-digit",
+        hour12: false,
+      });
+      return formatter.format(date);
+    } catch (error) {
+      console.error("Error al formatear fecha:", error);
+      return "Error en fecha";
+    }
+  };
+
   const getStatusCounts = () => {
     const counts = {
       online: 0,
@@ -474,7 +496,7 @@ export const MapaPage = () => {
                                   row.status === "online"
                                     ? "En Línea"
                                     : row.status === "offline"
-                                    ? getTimeAgo(row.lastupdate)
+                                    ? getTimeAgo(row.lastUpdate)
                                     : "Desconocido";
                                 return (
                                   <TableCell key={index} align={column.align}>
@@ -503,7 +525,7 @@ export const MapaPage = () => {
                                             variant="caption"
                                             color={"text.secondary"}
                                           >
-                                            {row["uniqueid"] || ""}
+                                            {row["uniqueId"] || ""}
                                           </Typography>
                                           <Circle
                                             fontSize="small"
@@ -716,17 +738,20 @@ export const MapaPage = () => {
                       {vehiculos.find((v) => v.id == vehiculoActual)?.name ||
                         "-"}
                     </Typography>
-                    <Grid container spacing={isMd ? 2 : 1} sx={{ margin: 0 }}>
+                    <Grid container spacing={isMd ? 1 : 0} sx={{ margin: 0 }}>
                       <Grid item xs={12} md={6}>
                         <Stack
                           direction="row"
                           spacing={isMd ? 2 : 1}
                           alignItems="flex-start"
                         >
-                          <Typography variant="h5" sx={{ fontWeight: "bold" }}>
+                          <Typography
+                            variant={"caption"}
+                            sx={{ paddingLeft: 1, fontWeight: "bold" }}
+                          >
                             Velocidad:
                           </Typography>
-                          <Typography variant={isMd ? "body1" : "caption"}>
+                          <Typography variant={"caption"}>
                             {Number(
                               vehiculos.find((v) => v.id == vehiculoActual)
                                 ?.speed || 0
@@ -741,14 +766,28 @@ export const MapaPage = () => {
                           spacing={isMd ? 2 : 1}
                           alignItems="flex-start"
                         >
-                          <Typography variant="h5" sx={{ fontWeight: "bold" }}>
+                          <Typography
+                            variant={"caption"}
+                            sx={{ paddingLeft: 1, fontWeight: "bold" }}
+                          >
                             Estado:
                           </Typography>
-                          <Typography variant={isMd ? "body1" : "caption"}>
-                            {(vehiculos.find((v) => v.id == vehiculoActual)
+                          <Typography
+                            variant={"caption"}
+                            sx={{
+                              color: definirColorDeEstado(
+                                vehiculos.find((v) => v.id == vehiculoActual)
+                                  ?.status
+                              ),
+                            }}
+                          >
+                            {vehiculos.find((v) => v.id == vehiculoActual)
                               ?.status === "online"
                               ? "En linea"
-                              : "Fuera de linea") || "Desconocido"}
+                              : getTimeAgo(
+                                  vehiculos.find((v) => v.id == vehiculoActual)
+                                    ?.lastUpdate
+                                ) || "Desconocido"}
                           </Typography>
                         </Stack>
                       </Grid>
@@ -761,14 +800,17 @@ export const MapaPage = () => {
                               alignItems="flex-start"
                             >
                               <Typography
-                                variant="h5"
-                                sx={{ fontWeight: "bold" }}
+                                variant={"caption"}
+                                sx={{ paddingLeft: 1, fontWeight: "bold" }}
                               >
-                                Modelo:
+                                Distancia Total:
                               </Typography>
-                              <Typography variant={isMd ? "body1" : "caption"}>
-                                {vehiculos.find((v) => v.id == vehiculoActual)
-                                  ?.model || "-"}
+                              <Typography variant={"caption"}>
+                                {Number(
+                                  vehiculos.find((v) => v.id == vehiculoActual)
+                                    ?.attributes?.totalDistance || 0
+                                ).toFixed(2)}{" "}
+                                km
                               </Typography>
                             </Stack>
                           </Grid>
@@ -779,14 +821,15 @@ export const MapaPage = () => {
                               alignItems="flex-start"
                             >
                               <Typography
-                                variant="h5"
-                                sx={{ fontWeight: "bold" }}
+                                variant={"caption"}
+                                sx={{ paddingLeft: 1, fontWeight: "bold" }}
                               >
-                                Conductor:
+                                Bateria:
                               </Typography>
-                              <Typography variant={isMd ? "body1" : "caption"}>
+                              <Typography variant={"caption"}>
                                 {vehiculos.find((v) => v.id == vehiculoActual)
-                                  ?.driver || "-"}
+                                  ?.attributes?.batteryLevel || "100"}{" "}
+                                %
                               </Typography>
                             </Stack>
                           </Grid>
@@ -797,13 +840,13 @@ export const MapaPage = () => {
                               alignItems="flex-start"
                             >
                               <Typography
-                                variant="h5"
-                                sx={{ fontWeight: "bold" }}
+                                variant={"caption"}
+                                sx={{ paddingLeft: 1, fontWeight: "bold" }}
                               >
                                 Rumbo:
                               </Typography>
                               <Typography
-                                variant={isMd ? "body1" : "caption"}
+                                variant={"caption"}
                                 sx={{ position: "relative" }}
                               >
                                 <Box
@@ -812,15 +855,69 @@ export const MapaPage = () => {
                                     display: "flex",
                                     alignItems: "center",
                                     justifyContent: "center",
-                                    transform: `translate(-50%, -50%) rotate(${
+                                    transform: `rotate(${
                                       vehiculos.find(
                                         (v) => v.id == vehiculoActual
                                       )?.course + 90 || 0
                                     }deg)`, // Rota el ícono según el heading
                                   }}
                                 >
-                                  <ArrowBack color="primary" />
+                                  <ArrowBack color="primary" fontSize="" />
                                 </Box>
+                              </Typography>
+                            </Stack>
+                          </Grid>
+                          <Grid item xs={12} md={6}>
+                            <Stack
+                              direction="row"
+                              spacing={isMd ? 2 : 1}
+                              alignItems="flex-start"
+                            >
+                              <Typography
+                                variant={"caption"}
+                                sx={{ paddingLeft: 1, fontWeight: "bold" }}
+                              >
+                                Motor:
+                              </Typography>
+                              <Typography variant={"caption"}>
+                                <Box
+                                  sx={{
+                                    display: "flex",
+                                    alignItems: "center",
+                                    justifyContent: "center",
+                                  }}
+                                >
+                                  <IconEngineFilled
+                                    color={
+                                      vehiculos.find(
+                                        (v) => v.id == vehiculoActual
+                                      )?.attributes?.ignition
+                                        ? "green"
+                                        : "red"
+                                    }
+                                    size={16}
+                                  />
+                                </Box>
+                              </Typography>
+                            </Stack>
+                          </Grid>
+                          <Grid item xs={12}>
+                            <Stack
+                              direction="row"
+                              spacing={isMd ? 2 : 1}
+                              alignItems="flex-start"
+                            >
+                              <Typography
+                                variant={"caption"}
+                                sx={{ paddingLeft: 1, fontWeight: "bold" }}
+                              >
+                                Última actualización:
+                              </Typography>
+                              <Typography variant={"caption"}>
+                                {restarCincoHoras(
+                                  vehiculos.find((v) => v.id == vehiculoActual)
+                                    ?.lastUpdate || ""
+                                )}
                               </Typography>
                             </Stack>
                           </Grid>
