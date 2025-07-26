@@ -18,7 +18,7 @@ const ListItemWrapper = styled('div')(({ theme }) => ({
   cursor: 'pointer',
   padding: 16,
   '&:hover': {
-    background: theme.palette.primary.light
+    background: theme.palette.background.default
   },
   '& .MuiListItem-root': {
     padding: 0
@@ -72,6 +72,7 @@ const NotificationList = ({ notifications = [] }) => {
       sx={{
         width: '100%',
         maxWidth: 330,
+        maxHeight: 500,
         py: 0,
         borderRadius: '10px',
         [theme.breakpoints.down('md')]: {
@@ -100,7 +101,7 @@ const NotificationList = ({ notifications = [] }) => {
                 <ListItemSecondaryAction>
                   <Grid container justifyContent="flex-end">
                     <Grid item xs={12}>
-                      <Typography variant="caption" display="block" gutterBottom>
+                      <Typography variant="caption" display="block" gutterBottom sx={{color: theme.palette.primary.light}}>
                         {obtenerTiempoRelativoModerno(notification.time) || ''}
                       </Typography>
                     </Grid>
@@ -109,7 +110,7 @@ const NotificationList = ({ notifications = [] }) => {
               </ListItem>
               <Grid container direction="column" className="list-container">
                 <Grid item xs={12} sx={{ pb: 2 }}>
-                  <Typography variant="subtitle2">{notification.description || 'No hay descripción'}</Typography>
+                  <Typography variant={"caption"}>{notification.description || 'No hay descripción'}</Typography>
                 </Grid>
                 {notification.unread && (
                   <Grid item xs={12}>

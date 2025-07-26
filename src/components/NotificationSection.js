@@ -182,7 +182,7 @@ const NotificationSection = () => {
       default:
         parseEvent = {
           ...parseEvent,
-          title: "Desconocida",
+          title: event.type,
           description: `Tipo de notificación desconocido para el vehículo ${event.name} el ${formattedTime}`,
         };
         break;
@@ -256,14 +256,18 @@ const NotificationSection = () => {
 
   return (
     <>
-      <IconButton color="inherit" onClick={handleToggle}>
+      <IconButton
+        ref={anchorRef}
+        color="inherit"
+        onClick={handleToggle}
+      >
         <Badge
           badgeContent={
             filteredNotifications.filter(
               (notificacion) => notificacion.unread === true
             ).length
           }
-          color="error"
+          color="primary"
           anchorOrigin={{
             vertical: "top",
             horizontal: "right",
@@ -286,7 +290,7 @@ const NotificationSection = () => {
             {
               name: "offset",
               options: {
-                offset: [matchesXs ? 5 : 0, 20],
+                offset: [matchesXs ? 5 : 0, 0],
               },
             },
           ],
@@ -325,7 +329,7 @@ const NotificationSection = () => {
                               label={notifications.length || 0}
                               sx={{
                                 color: theme.palette.background.default,
-                                bgcolor: theme.palette.warning.dark,
+                                bgcolor: theme.palette.primary.dark,
                               }}
                             />
                           </Stack>
