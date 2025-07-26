@@ -102,6 +102,11 @@ export const MapaPage = () => {
       const vehiculo = devices.find(
         (vehiculo) => vehiculo.id === vehiculoActual
       );
+      setCamera({
+        lat: vehiculo?.latitude || 0,
+        lng: vehiculo?.longitude || 0,
+        zoom: 18,
+      });
       setRouteCoordinates((prevCoordinates) => [
         ...prevCoordinates,
         [vehiculo.latitude || 0, vehiculo.longitude || 0],
@@ -111,10 +116,10 @@ export const MapaPage = () => {
 
   useEffect(() => {
     if (vehiculoActual) {
+      setFly(true);
       const vehiculo = devices.find(
         (vehiculo) => vehiculo.id === vehiculoActual
       );
-      setFly(true);
       setCamera({
         lat: vehiculo?.latitude || 0,
         lng: vehiculo?.longitude || 0,
