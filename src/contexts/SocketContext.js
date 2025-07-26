@@ -106,7 +106,7 @@ export const WebSocketProvider = ({ children }) => {
           const eventDetails = data.event;
           setEvent(eventDetails);
 
-          const eventTime = new Date(eventDetails.eventtime);
+          const eventTime = new Date(eventDetails.eventTime);
           eventTime.setHours(eventTime.getHours() - 5); // Ajuste de zona horaria -5 UTC
 
           const now = new Date();
@@ -151,9 +151,7 @@ export const WebSocketProvider = ({ children }) => {
             case "sos":
               message = `¡SOS ACTIVADO! en el vehículo ${
                 eventDetails.name
-              } ${formattedTime}, puede comunicarse con los siguientes números: ${eventDetails.contactos
-                .map((contacto) => contacto.phone)
-                .join(", ")}`;
+              } ${formattedTime}, puede comunicarse con los siguientes números: ${eventDetails.contact}`;
               speak = `Se ha activado la alerta S.O.S en el vehículo ${eventDetails.name}`;
               image = ImgSos;
               soundSrc = SosSound;
@@ -174,15 +172,15 @@ export const WebSocketProvider = ({ children }) => {
               type = "info";
               break;
             case "geofenceEnter":
-              message = `El vehículo ${eventDetails.name} ingresó a la geocerca ${eventDetails.geofencename} ${formattedTime}`;
-              speak = `El vehículo ${eventDetails.name} entró a la geocerca ${eventDetails.geofencename}`;
+              message = `El vehículo ${eventDetails.name} ingresó a la geocerca ${eventDetails.geofenceName} ${formattedTime}`;
+              speak = `El vehículo ${eventDetails.name} entró a la geocerca ${eventDetails.geofenceName}`;
               image = ImgAlert;
               soundSrc = GeofenceEnterSound;
               type = "info";
               break;
             case "geofenceExit":
-              message = `El vehículo ${eventDetails.name} salió de la geocerca ${eventDetails.geofencename} ${formattedTime}`;
-              speak = `El vehículo ${eventDetails.name} salió de la geocerca ${eventDetails.geofencename}`;
+              message = `El vehículo ${eventDetails.name} salió de la geocerca ${eventDetails.geofenceName} ${formattedTime}`;
+              speak = `El vehículo ${eventDetails.name} salió de la geocerca ${eventDetails.geofenceName}`;
               image = ImgAlert;
               soundSrc = GeofenceExitSound;
               type = "info";

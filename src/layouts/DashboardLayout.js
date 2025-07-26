@@ -30,7 +30,6 @@ import {
 import {
   Menu as MenuIcon,
   Search as SearchIcon,
-  Notifications as NotificationsIcon,
   ExpandLess,
   ExpandMore,
   Logout as LogoutIcon,
@@ -45,13 +44,15 @@ import {
 import { useNavigate, useLocation, Navigate } from "react-router-dom";
 import { useAuth } from "../contexts/AuthContext";
 import { useTheme as useCustomTheme } from "../contexts/ThemeContext";
-import { notificationsAPI, modulesAPI } from "../utils/api";
+import { modulesAPI } from "../utils/api";
 import { getIcon } from "../config/moduleConfig";
 import { WebSocketProvider } from "../contexts/SocketContext";
 import { DynamicRoutes } from "../routes/DynamicRouteGenerator";
 import { findFirstValidRoute } from "../utils/navigationUtils";
 import Logo from "../components/Logo";
 import { confirmSwal } from "../utils/swal-helpers";
+import { createSession, getSession } from "../utils/common";
+import NotificationSection from "../components/NotificationSection";
 
 const drawerWidth = 260;
 const collapsedDrawerWidth = 64;
@@ -80,11 +81,9 @@ export const DashboardLayout = () => {
   const [mobileOpen, setMobileOpen] = useState(false);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [anchorEl, setAnchorEl] = useState(null);
-  const [notificationAnchor, setNotificationAnchor] = useState(null);
   const [expandedItems, setExpandedItems] = useState([]);
-  const [notifications, setNotifications] = useState([]);
-  const [unreadCount, setUnreadCount] = useState(0);
   const [menuModules, setMenuModules] = useState([]);
+  const [notificaciones, setNotificaciones] = useState({});
   const [loading, setLoading] = useState(true);
 
   const currentDrawerWidth = sidebarCollapsed
@@ -92,7 +91,6 @@ export const DashboardLayout = () => {
     : drawerWidth;
 
   useEffect(() => {
-    loadNotifications();
     loadMenuModules();
   }, []);
 
@@ -108,25 +106,127 @@ export const DashboardLayout = () => {
     };
   }, []);
 
-  const loadNotifications = async () => {
+  useEffect(() => {
+    const notificaciones = obtenerNotificacionesActivas().reduce(
+      (acc, type) => {
+        acc[type] = true;
+        return acc;
+      },
+      {}
+    );
+    setNotificaciones(notificaciones);
+  }, []);
+
+  const obtenerNotificacionesActivas = () => {
     try {
-      const response = await notificationsAPI.getAll({ unread: true });
-      setNotifications(response.data.data || []);
-      setUnreadCount(response.data.unread_count || 0);
+      const data = getSession("NOTIFICACIONES_ACTIVAS");
+      // Si getSession devuelve null/undefined o no es un array válido, inicializamos con []
+      if (data === null || data === undefined || !Array.isArray(data)) {
+        const newNotifications = [
+          "alarm",
+          "ignitionOn",
+          "ignitionOff",
+          "deviceOverspeed",
+          "geofenceEnter",
+          "geofenceExit",
+          "deviceOffline",
+        ];
+        createSession("NOTIFICACIONES_ACTIVAS", newNotifications);
+        return newNotifications;
+      }
+      return data; // Devolvemos el array existente
     } catch (error) {
-      console.error("Error loading notifications:", error);
-      const mockNotifications = [
-        {
-          id: 1,
-          type: "info",
-          title: "Welcome",
-          message: "Welcome to Oasis Dashboard",
-          read_at: null,
-          created_at: new Date().toISOString(),
-        },
-      ];
-      setNotifications(mockNotifications);
-      setUnreadCount(1);
+      console.error(
+        `Error al obtener o parsear notificaciones de localStorage:`,
+        error
+      );
+      // En caso de cualquier error, devolvemos un array vacío por seguridad
+      return [];
+    }
+  };
+
+  const desactivarNotificacion = (type) => {
+    if (!type || typeof type !== "string") {
+      console.warn(
+        "Se requiere un tipo de notificación válido (string) para desactivar."
+      );
+      return false;
+    }
+    try {
+      let notificacionesActivas = obtenerNotificacionesActivas();
+      const originalLength = notificacionesActivas.length;
+
+      // Filtramos la lista para quitar el tipo especificado
+      notificacionesActivas = notificacionesActivas.filter((t) => t !== type);
+
+      // Si la longitud cambió (es decir, se quitó algo), guardamos la nueva lista
+      if (notificacionesActivas.length < originalLength) {
+        createSession("NOTIFICACIONES_ACTIVAS", notificacionesActivas);
+      }
+      // Si no estaba en la lista o se guardó correctamente, la operación es exitosa
+      return true;
+    } catch (error) {
+      console.error(`Error al desactivar notificación "${type}":`, error);
+      return false;
+    }
+  };
+
+  const activarNotificacion = (type) => {
+    if (!type || typeof type !== "string") {
+      console.warn(
+        "Se requiere un tipo de notificación válido (string) para activar."
+      );
+      return false;
+    }
+    try {
+      const notificacionesActivas = obtenerNotificacionesActivas();
+
+      // Si el tipo no está ya en la lista, lo añadimos
+      if (!notificacionesActivas.includes(type)) {
+        notificacionesActivas.push(type);
+        createSession("NOTIFICACIONES_ACTIVAS", notificacionesActivas);
+      }
+      // Si ya estaba activa o se guardó correctamente, la operación es exitosa
+      return true;
+    } catch (error) {
+      console.error(`Error al activar notificación "${type}":`, error);
+      return false;
+    }
+  };
+
+  const handleChangeSwitch = (event) => {
+    const { name, checked } = event.target;
+    switch (name) {
+      case "ignition":
+        updateNotificationSettings(checked, "ignitionOn");
+        updateNotificationSettings(checked, "ignitionOff");
+        setNotificaciones({
+          ...notificaciones,
+          ignitionOn: checked,
+          ignitionOff: checked,
+        });
+        break;
+      case "geofence":
+        updateNotificationSettings(checked, "geofenceEnter");
+        updateNotificationSettings(checked, "geofenceExit");
+        setNotificaciones({
+          ...notificaciones,
+          geofenceEnter: checked,
+          geofenceExit: checked,
+        });
+        break;
+      default:
+        updateNotificationSettings(checked, name);
+        setNotificaciones({ ...notificaciones, [name]: checked });
+        break;
+    }
+  };
+
+  const updateNotificationSettings = (checked, name) => {
+    if (checked) {
+      activarNotificacion(name);
+    } else {
+      desactivarNotificacion(name);
     }
   };
 
@@ -176,14 +276,6 @@ export const DashboardLayout = () => {
     setAnchorEl(null);
   };
 
-  const handleNotificationClick = (event) => {
-    setNotificationAnchor(event.currentTarget);
-  };
-
-  const handleNotificationClose = () => {
-    setNotificationAnchor(null);
-  };
-
   const handleLogout = async () => {
     handleClose();
     const userConfirmed = await confirmSwal(
@@ -208,22 +300,6 @@ export const DashboardLayout = () => {
         ? prev.filter((item) => item !== text)
         : [...prev, text]
     );
-  };
-
-  const markAllAsRead = async () => {
-    try {
-      await notificationsAPI.markAllAsRead();
-      setNotifications((prev) =>
-        prev.map((notif) => ({ ...notif, read_at: new Date().toISOString() }))
-      );
-      setUnreadCount(0);
-    } catch (error) {
-      console.error("Error marking notifications as read:", error);
-      setNotifications((prev) =>
-        prev.map((notif) => ({ ...notif, read_at: new Date().toISOString() }))
-      );
-      setUnreadCount(0);
-    }
   };
 
   const renderMenuItem = (item, depth = 0) => {
@@ -502,12 +578,8 @@ export const DashboardLayout = () => {
                 </IconButton>
               </Tooltip>
 
-              <Tooltip title="Notifications">
-                <IconButton color="inherit" onClick={handleNotificationClick}>
-                  <Badge badgeContent={unreadCount} color="error">
-                    <NotificationsIcon />
-                  </Badge>
-                </IconButton>
+              <Tooltip title="Notifications" sx={{ position: "relative" }}>
+                <NotificationSection />
               </Tooltip>
 
               <Tooltip title="Profile">
@@ -534,137 +606,6 @@ export const DashboardLayout = () => {
                 </IconButton>
               </Tooltip>
 
-              {/* Notifications Menu */}
-              <Menu
-                anchorEl={notificationAnchor}
-                open={Boolean(notificationAnchor)}
-                onClose={handleNotificationClose}
-                PaperProps={{
-                  sx: {
-                    width: 330,
-                    maxHeight: 500,
-                    mt: 1,
-                    border: `1px solid ${theme.palette.divider}`,
-                  },
-                }}
-                transformOrigin={{ horizontal: "right", vertical: "top" }}
-                anchorOrigin={{ horizontal: "right", vertical: "bottom" }}
-              >
-                {/* Header de notificaciones */}
-                <Box
-                  sx={{
-                    p: 2,
-                    borderBottom: `1px solid ${theme.palette.divider}`,
-                  }}
-                >
-                  <Box
-                    sx={{
-                      display: "flex",
-                      justifyContent: "space-between",
-                      alignItems: "center",
-                      mb: 1,
-                    }}
-                  >
-                    <Typography
-                      variant="subtitle1"
-                      sx={{
-                        fontWeight: 600,
-                        display: "flex",
-                        alignItems: "center",
-                        gap: 1,
-                      }}
-                    >
-                      All Notification
-                      <Chip
-                        label={unreadCount.toString().padStart(2, "0")}
-                        color="warning"
-                        size="small"
-                        sx={{ fontSize: "0.75rem", height: 20 }}
-                      />
-                    </Typography>
-                  </Box>
-                  <Button
-                    size="small"
-                    onClick={markAllAsRead}
-                    sx={{
-                      color: theme.palette.primary.main,
-                      textTransform: "none",
-                      p: 0,
-                    }}
-                  >
-                    Mark as all read
-                  </Button>
-                </Box>
-
-                {/* Lista de notificaciones */}
-                <Box sx={{ maxHeight: 300, overflow: "auto" }}>
-                  {notifications.length > 0 ? (
-                    notifications.map((notification) => (
-                      <Box
-                        key={notification.id}
-                        sx={{
-                          p: 2,
-                          borderBottom: `1px solid ${theme.palette.divider}`,
-                        }}
-                      >
-                        <Typography
-                          variant="subtitle2"
-                          sx={{ fontWeight: 600, fontSize: "0.875rem" }}
-                        >
-                          {notification.title}
-                        </Typography>
-                        <Typography
-                          variant="body2"
-                          color="text.secondary"
-                          sx={{ fontSize: "0.75rem", mt: 0.5 }}
-                        >
-                          {notification.message}
-                        </Typography>
-                        <Box
-                          sx={{
-                            display: "flex",
-                            justifyContent: "space-between",
-                            alignItems: "center",
-                            mt: 1,
-                          }}
-                        >
-                          <Typography variant="caption" color="text.secondary">
-                            {new Date(notification.created_at).toLocaleString()}
-                          </Typography>
-                          {!notification.read_at && (
-                            <Chip
-                              label="Unread"
-                              color="error"
-                              size="small"
-                              sx={{ fontSize: "0.6rem", height: 18 }}
-                            />
-                          )}
-                        </Box>
-                      </Box>
-                    ))
-                  ) : (
-                    <Box sx={{ p: 2, textAlign: "center" }}>
-                      <Typography variant="body2" color="text.secondary">
-                        No notifications
-                      </Typography>
-                    </Box>
-                  )}
-                </Box>
-
-                {/* Footer */}
-                <Box
-                  sx={{
-                    p: 2,
-                    textAlign: "center",
-                    borderTop: `1px solid ${theme.palette.divider}`,
-                  }}
-                >
-                  <Button color="primary" sx={{ textTransform: "none" }}>
-                    View All
-                  </Button>
-                </Box>
-              </Menu>
-
               {/* User Menu */}
               <Menu
                 id="menu-appbar"
@@ -682,7 +623,7 @@ export const DashboardLayout = () => {
                 onClose={handleClose}
                 PaperProps={{
                   sx: {
-                    width: 290,
+                    width: 320,
                     mt: 1,
                   },
                 }}
@@ -714,13 +655,70 @@ export const DashboardLayout = () => {
                     sx={{ mb: 1 }}
                   />
                   <FormControlLabel
-                    control={<Switch color="primary" />}
-                    label="Permitir Notificaciones"
+                    control={
+                      <Switch
+                        checked={notificaciones?.alarm || false}
+                        onChange={handleChangeSwitch}
+                        name="alarm"
+                      />
+                    }
+                    label="Notificación de Alarma"
+                    sx={{ mb: 1 }}
+                  />
+                  <FormControlLabel
+                    control={
+                      <Switch
+                        checked={
+                          (notificaciones?.ignitionOn &&
+                            notificaciones?.ignitionOff) ||
+                          false
+                        }
+                        onChange={handleChangeSwitch}
+                        name="ignition"
+                      />
+                    }
+                    label="Notif. de Encendido/Apagado"
+                    sx={{ mb: 1 }}
+                  />
+                  <FormControlLabel
+                    control={
+                      <Switch
+                        checked={notificaciones?.deviceOverspeed || false}
+                        onChange={handleChangeSwitch}
+                        name="deviceOverspeed"
+                      />
+                    }
+                    label="Notif. de Exceso de Velocidad"
+                    sx={{ mb: 1 }}
+                  />
+                  <FormControlLabel
+                    control={
+                      <Switch
+                        checked={
+                          (notificaciones?.geofenceEnter &&
+                            notificaciones?.geofenceExit) ||
+                          false
+                        }
+                        onChange={handleChangeSwitch}
+                        name="geofence"
+                      />
+                    }
+                    label="Notificación de Geo Cercas"
+                    sx={{ mb: 1 }}
+                  />
+                  <FormControlLabel
+                    control={
+                      <Switch
+                        checked={notificaciones?.deviceOffline || false}
+                        onChange={handleChangeSwitch}
+                        name="deviceOffline"
+                      />
+                    }
+                    label="Notif. de Fuera de línea"
                   />
                 </Box>
 
                 <Divider />
-
                 <MenuItem onClick={() => navigate("/dashboard/settings")}>
                   <ListItemIcon>
                     <SettingsIcon fontSize="small" />
