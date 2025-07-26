@@ -63,14 +63,16 @@ export const HistorialDeRecorridoPage = () => {
   const getIcon = (iconUrl) =>
     new L.Icon({
       iconUrl:
-        iconUrl || "https://cdn-icons-png.flaticon.com/128/809/809998.png", // URL por defecto si no hay un icono específico
+        iconUrl ||
+        "https://static.vecteezy.com/system/resources/previews/025/312/642/large_2x/white-van-on-transparent-background-3d-rendering-illustration-free-png.png", // URL por defecto si no hay un icono específico
       iconSize: [35, 35], // Tamaño del icono
       iconAnchor: [17, 35], // Punto del icono que corresponderá a la ubicación del marcador
       popupAnchor: [0, -35], // Punto desde el cual se abrirá el popup en relación con iconAnchor
     });
   const currentRow = filteredRows[positionActual];
 
-  const iconUrl = "https://cdn-icons-png.flaticon.com/128/809/809998.png"; // URL por defecto
+  const iconUrl =
+    "https://static.vecteezy.com/system/resources/previews/025/312/642/large_2x/white-van-on-transparent-background-3d-rendering-illustration-free-png.png"; // URL por defecto
 
   const customIcon = getIcon(iconUrl);
 
@@ -652,7 +654,7 @@ export const HistorialDeRecorridoPage = () => {
                   ]}
                   icon={customIcon}
                   rotationOrigin={"center center"}
-                  rotationAngle={currentRow?.course + 180 || 0}
+                  rotationAngle={currentRow?.course + 90 || 0}
                 >
                   <Tooltip
                     permanent
@@ -665,7 +667,10 @@ export const HistorialDeRecorridoPage = () => {
                     ) || ""}
                   </Tooltip>
                 </RotatedMarker>
-                <Polyline positions={posiciones} color={theme.palette.primary.main} />
+                <Polyline
+                  positions={posiciones}
+                  color={theme.palette.primary.main}
+                />
               </>
             ) : (
               <div className="alert alert-warning" role="alert">

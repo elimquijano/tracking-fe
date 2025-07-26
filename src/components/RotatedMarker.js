@@ -10,6 +10,7 @@ function RotatedMarker({
   rotationOrigin,
   eventHandlers,
   children,
+  title,
 }) {
   const map = useMap();
   const markerRef = useRef();
@@ -19,6 +20,7 @@ function RotatedMarker({
       icon: icon,
       rotationAngle: rotationAngle,
       rotationOrigin: rotationOrigin,
+      title: title,
     }).addTo(map);
 
     // Añade los manejadores de eventos al marcador

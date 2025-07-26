@@ -45,6 +45,7 @@ import { IconCircle } from "../components/iconCircle";
 import { getTraccar } from "../utils/common";
 import { theme } from "../theme/theme";
 import { IconEngineFilled } from "@tabler/icons-react";
+import RotatedMarker from "../components/RotatedMarker";
 
 // Asegúrate de que los iconos de los marcadores se muestren correctamente
 delete L.Icon.Default.prototype._getIconUrl;
@@ -635,39 +636,44 @@ export const MapaPage = () => {
               {vehiculos.map((vehiculo, index) => {
                 const icon = L.icon({
                   iconUrl:
-                    "https://cdn-icons-png.flaticon.com/128/809/809998.png",
+                    "https://static.vecteezy.com/system/resources/previews/025/312/642/large_2x/white-van-on-transparent-background-3d-rendering-illustration-free-png.png",
                   iconSize: [32, 32], // Tamaño del icono
                   iconAnchor: [16, 16], // Punto del icono que se alineará con la posición del marcador
                   popupAnchor: [1, -12], // Punto desde el que se abrirá el popup en relación al icono
                 });
                 return (
-                  <Marker
-                    key={index}
-                    title={vehiculo?.name}
-                    position={[
-                      vehiculo?.latitude || 0,
-                      vehiculo?.longitude || 0,
-                    ]}
-                    icon={icon}
-                    eventHandlers={{
-                      click: () => setVehiculoActual(vehiculo.id), // Maneja el clic en el marcador
-                    }}
-                  >
+                  <>
+                    <RotatedMarker
+                      key={`marker-${index}`}
+                      title={vehiculo?.name}
+                      position={[
+                        vehiculo?.latitude || 0,
+                        vehiculo?.longitude || 0,
+                      ]}
+                      icon={icon}
+                      eventHandlers={{
+                        click: () => setVehiculoActual(vehiculo.id), // Maneja el clic en el marcador
+                      }}
+                      rotationOrigin={"center center"}
+                      rotationAngle={vehiculo?.course + 90 || 0}
+                    />
                     {vehiculoActual === vehiculo.id && (
                       <LeafletCircle
+                        key={`circle-${index}`}
                         center={[
                           vehiculo?.latitude || 0,
                           vehiculo?.longitude || 0,
                         ]}
-                        radius={5} // Radio en metros
+                        radius={10} // Radio en metros
                         color="rgba(0, 128, 0, 0.0)" // Color del borde en formato RGBA (verde opaco)
-                        fillColor="rgba(0, 128, 0, 0.3)"
+                        fillColor="rgba(142, 36, 170, 0.4)"
                         fillOpacity={1} // Opacidad del relleno
                       />
                     )}
-                  </Marker>
+                  </>
                 );
               })}
+
               {geofences.map((row, index) => {
                 let type;
                 let data;
