@@ -227,7 +227,7 @@ const NotificationSection = () => {
     const fecha = new Date(fechaString.replace(" ", "T"));
 
     // 2. Le restamos 5 horas a la fecha.
-    fecha.setHours(fecha.getHours() - 5);
+    //fecha.setHours(fecha.getHours() - 5);
 
     // 3. Extraemos cada parte de la nueva fecha.
     const anio = fecha.getFullYear();

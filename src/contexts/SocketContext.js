@@ -96,7 +96,6 @@ export const WebSocketProvider = ({ children }) => {
     websocket.onmessage = (event) => {
       try {
         const data = JSON.parse(event.data);
-        console.log("Mensaje recibido:", data);
         if (data.devices) {
           setDevices((prevDevices) =>
             mergeDeviceUpdates(prevDevices, data.devices)
@@ -107,7 +106,6 @@ export const WebSocketProvider = ({ children }) => {
           setEvent(eventDetails);
 
           const eventTime = new Date(eventDetails.eventTime);
-          eventTime.setHours(eventTime.getHours() - 5); // Ajuste de zona horaria -5 UTC
 
           const now = new Date();
           let formattedTime;
