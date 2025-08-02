@@ -1,6 +1,5 @@
-import { useMap, Tooltip, Popup } from "react-leaflet";
+import { Marker } from "react-leaflet";
 import { useEffect, useRef } from "react";
-import L from "leaflet";
 import "leaflet-rotatedmarker";
 
 function RotatedMarker({
@@ -12,46 +11,30 @@ function RotatedMarker({
   children,
   title,
 }) {
-  const map = useMap();
   const markerRef = useRef();
 
+  // Aplicar rotación después de que el marcador se monte
   useEffect(() => {
-    markerRef.current = L.marker(position, {
-      icon: icon,
-      rotationAngle: rotationAngle,
-      rotationOrigin: rotationOrigin,
-      title: title,
-    }).addTo(map);
-
-    // Añade los manejadores de eventos al marcador
-    for (const event in eventHandlers) {
-      markerRef.current.on(event, eventHandlers[event]);
-    }
-
-    // Añade los hijos al marcador
-    if (children) {
-      if (children.type === Tooltip) {
-        markerRef.current.bindTooltip(children.props.children, children.props);
-      } else if (children.type === Popup) {
-        markerRef.current.bindPopup(children.props.children, children.props);
+    if (markerRef.current && rotationAngle !== undefined) {
+      const leafletMarker = markerRef.current;
+      leafletMarker.setRotationAngle(rotationAngle);
+      if (rotationOrigin) {
+        leafletMarker.setRotationOrigin(rotationOrigin);
       }
-      // Aquí puedes añadir más condiciones para otros tipos de hijos
     }
+  }, [rotationAngle, rotationOrigin]);
 
-    return () => {
-      map.removeLayer(markerRef.current);
-    };
-  }, [
-    map,
-    position,
-    icon,
-    rotationAngle,
-    rotationOrigin,
-    eventHandlers,
-    children,
-  ]);
-
-  return null;
+  return (
+    <Marker
+      ref={markerRef}
+      position={position}
+      icon={icon}
+      eventHandlers={eventHandlers}
+      title={title}
+    >
+      {children}
+    </Marker>
+  );
 }
 
 export default RotatedMarker;

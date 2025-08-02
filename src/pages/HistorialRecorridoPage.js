@@ -10,6 +10,8 @@ import {
   Polygon,
   Tooltip,
   ZoomControl,
+  Marker,
+  CircleMarker,
 } from "react-leaflet";
 import {
   Paper,
@@ -60,20 +62,20 @@ export const HistorialDeRecorridoPage = () => {
   const [mapZoom, setMapZoom] = useState(7);
   const [mapKey, setMapKey] = useState(Date.now());
   const { BaseLayer } = LayersControl;
+
   const getIcon = (iconUrl) =>
     new L.Icon({
       iconUrl:
         iconUrl ||
-        "https://static.vecteezy.com/system/resources/previews/025/312/642/large_2x/white-van-on-transparent-background-3d-rendering-illustration-free-png.png", // URL por defecto si no hay un icono específico
-      iconSize: [35, 35], // Tamaño del icono
-      iconAnchor: [17, 35], // Punto del icono que corresponderá a la ubicación del marcador
-      popupAnchor: [0, -35], // Punto desde el cual se abrirá el popup en relación con iconAnchor
+        "https://static.vecteezy.com/system/resources/previews/025/312/642/large_2x/white-van-on-transparent-background-3d-rendering-illustration-free-png.png",
+      iconSize: [35, 35],
+      iconAnchor: [17, 35],
+      popupAnchor: [0, -35],
     });
+
   const currentRow = filteredRows[positionActual];
-
   const iconUrl =
-    "https://static.vecteezy.com/system/resources/previews/025/312/642/large_2x/white-van-on-transparent-background-3d-rendering-illustration-free-png.png"; // URL por defecto
-
+    "https://static.vecteezy.com/system/resources/previews/025/312/642/large_2x/white-van-on-transparent-background-3d-rendering-illustration-free-png.png";
   const customIcon = getIcon(iconUrl);
 
   useEffect(() => {
@@ -107,22 +109,21 @@ export const HistorialDeRecorridoPage = () => {
     if (!paused) {
       intervalId = setInterval(() => {
         setPositionActual((prevPosition) => {
-          // Incrementa positionActual hasta un máximo de totalItems - 1
           const nextPosition = prevPosition + 1;
           if (nextPosition == totalItems - 1) {
             setPaused(true);
           }
           return nextPosition < totalItems ? nextPosition : prevPosition;
         });
-      }, 500); // Incrementa positionActual cada medio segundo
+      }, 500);
     }
 
     return () => {
       if (intervalId !== null) {
-        clearInterval(intervalId); // Limpia el intervalo cuando paused es true o cuando el componente se desmonta
+        clearInterval(intervalId);
       }
     };
-  }, [paused, totalItems]); // Vuelve a ejecutar useEffect cuando paused o totalItems cambian
+  }, [paused, totalItems]);
 
   async function SearchFilter() {
     if (ValidacionItemSave(searchFilter) === false) {
@@ -162,29 +163,26 @@ export const HistorialDeRecorridoPage = () => {
         to.setHours(23, 59, 59, 999);
         break;
       case "yesterday":
-        from = new Date(todayReference); // Empezar con una copia fresca
+        from = new Date(todayReference);
         from.setDate(from.getDate() - 1);
         from.setHours(0, 0, 0, 0);
-        to = new Date(from); // 'to' se basa en la fecha de 'from' (ayer)
+        to = new Date(from);
         to.setHours(23, 59, 59, 999);
         break;
       case "this_week":
         from = new Date(todayReference);
         from.setDate(from.getDate() - (from.getDay() || 7) + 1);
         from.setHours(0, 0, 0, 0);
-
-        to = new Date(from); // 'to' comienza desde el Lunes calculado
-        to.setDate(to.getDate() + 6); // Sumar 6 días para llegar al Domingo
+        to = new Date(from);
+        to.setDate(to.getDate() + 6);
         to.setHours(23, 59, 59, 999);
         break;
       case "prev_week":
         from = new Date(todayReference);
-        // Ir al Lunes de la semana actual y luego restar 7 días
         from.setDate(from.getDate() - (from.getDay() || 7) + 1 - 7);
         from.setHours(0, 0, 0, 0);
-
-        to = new Date(from); // 'to' comienza desde el Lunes de la semana pasada
-        to.setDate(to.getDate() + 6); // Sumar 6 días para llegar al Domingo de la semana pasada
+        to = new Date(from);
+        to.setDate(to.getDate() + 6);
         to.setHours(23, 59, 59, 999);
         break;
       case "this_month":
@@ -193,12 +191,11 @@ export const HistorialDeRecorridoPage = () => {
           todayReference.getMonth(),
           1
         );
-        // from.setHours(0,0,0,0) es implícito por el constructor
         to = new Date(
           todayReference.getFullYear(),
           todayReference.getMonth() + 1,
           0
-        ); // El día 0 del mes siguiente es el último día del mes actual
+        );
         to.setHours(23, 59, 59, 999);
         break;
       case "prev_month":
@@ -207,15 +204,14 @@ export const HistorialDeRecorridoPage = () => {
           todayReference.getMonth() - 1,
           1
         );
-        // from.setHours(0,0,0,0) es implícito
         to = new Date(
           todayReference.getFullYear(),
           todayReference.getMonth(),
           0
-        ); // El día 0 del mes actual es el último día del mes anterior
+        );
         to.setHours(23, 59, 59, 999);
         break;
-      default: // Por defecto, se comporta como "today"
+      default:
         from = new Date(todayReference);
         from.setHours(0, 0, 0, 0);
         to = new Date(todayReference);
@@ -440,7 +436,6 @@ export const HistorialDeRecorridoPage = () => {
                   autoComplete="off"
                   minWidth={250}
                 >
-                  {/* Campo de Autocompletar Vehículo */}
                   <Autocomplete
                     size="small"
                     options={vehiculos}
@@ -461,7 +456,6 @@ export const HistorialDeRecorridoPage = () => {
                     )}
                   />
 
-                  {/* Campo de Selección de Fecha */}
                   <Select
                     id="date_filter"
                     name="date_filter"
@@ -477,7 +471,6 @@ export const HistorialDeRecorridoPage = () => {
                     <MenuItem value="this_month">Este mes</MenuItem>
                   </Select>
 
-                  {/* Botón de Búsqueda */}
                   <Button
                     fullWidth
                     variant="contained"
@@ -489,7 +482,6 @@ export const HistorialDeRecorridoPage = () => {
                     {isLoading ? "Cargando..." : "BUSCAR"}
                   </Button>
 
-                  {/* Botón de Limpiar */}
                   <Button
                     fullWidth
                     variant="contained"
@@ -503,7 +495,6 @@ export const HistorialDeRecorridoPage = () => {
               </Paper>
             ) : (
               <Box sx={{ p: 2 }}>
-                {/* Barra superior con botones y título */}
                 <Stack
                   direction="row"
                   justifyContent="space-between"
@@ -525,7 +516,6 @@ export const HistorialDeRecorridoPage = () => {
                   </IconButton>
                 </Stack>
 
-                {/* Slider de progreso */}
                 <Slider
                   value={positionActual}
                   onChange={handleChangeSliderValue}
@@ -534,21 +524,18 @@ export const HistorialDeRecorridoPage = () => {
                   aria-labelledby="player-slider"
                 />
 
-                {/* Controles de reproducción y datos (usando Grid) */}
                 <Grid
                   container
                   spacing={1}
                   alignItems="center"
                   justifyContent="space-between"
                 >
-                  {/* Contador de posición */}
                   <Grid item xs={3} sx={{ textAlign: "left" }}>
                     <Typography variant="caption">
                       {totalItems > 0 ? positionActual + 1 : 0}/{totalItems}
                     </Typography>
                   </Grid>
 
-                  {/* Controles de Play/Pausa */}
                   <Grid item xs={6} sx={{ textAlign: "center" }}>
                     <IconButton
                       onClick={previousPosition}
@@ -570,7 +557,6 @@ export const HistorialDeRecorridoPage = () => {
                     </IconButton>
                   </Grid>
 
-                  {/* Marca de tiempo */}
                   <Grid item xs={3} sx={{ textAlign: "right" }}>
                     <Typography variant="caption">
                       {restarCincoHoras(
@@ -628,18 +614,23 @@ export const HistorialDeRecorridoPage = () => {
             </LayersControl>
             {totalItems > 0 ? (
               <>
+                {/* Triángulos del historial - Estilo Traccar */}
                 {filteredRows.map((position, index) => {
                   const triangle = rotatePoints(
                     [position?.latitude, position?.longitude],
                     position?.course
                   );
+
                   return (
                     <React.Fragment key={index}>
                       <Polygon
                         positions={triangle}
                         color={theme.palette.primary.main}
                         fillColor={theme.palette.primary.main}
-                        fillOpacity={1}
+                        fillOpacity={0.8}
+                        weight={2}
+                        interactive={true}
+                        bubblingMouseEvents={false}
                         eventHandlers={{
                           click: () => changePosition(position, index),
                         }}
@@ -647,6 +638,8 @@ export const HistorialDeRecorridoPage = () => {
                     </React.Fragment>
                   );
                 })}
+
+                {/* Marcador principal que se mueve - Solo uno */}
                 <RotatedMarker
                   position={[
                     currentRow?.latitude || 0,
@@ -660,16 +653,31 @@ export const HistorialDeRecorridoPage = () => {
                     permanent
                     direction="top"
                     offset={[0, -20]}
-                    opacity={0.6}
+                    opacity={0.8}
                   >
-                    {restarCincoHoras(
-                      filteredRows[positionActual]?.deviceTime
-                    ) || ""}
+                    <div style={{ textAlign: "center" }}>
+                      <strong>
+                        {
+                          vehiculos.find((v) => v.id === currentRow?.deviceId)
+                            ?.name
+                        }
+                      </strong>
+                      <br />
+                      {restarCincoHoras(currentRow?.deviceTime)}
+                      <br />
+                      <strong>
+                        {Math.round((currentRow?.speed || 0) * 1.852)} km/h
+                      </strong>
+                    </div>
                   </Tooltip>
                 </RotatedMarker>
+
+                {/* Línea de la ruta */}
                 <Polyline
                   positions={posiciones}
                   color={theme.palette.primary.main}
+                  weight={3}
+                  opacity={0.7}
                 />
               </>
             ) : (
@@ -677,6 +685,8 @@ export const HistorialDeRecorridoPage = () => {
                 No se encontraron resultados.
               </div>
             )}
+
+            {/* Geocercas */}
             {geocercas.map((row, index) => {
               let type;
               let data;

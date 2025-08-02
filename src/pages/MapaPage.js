@@ -83,10 +83,10 @@ const MapController = ({ vehiculoActual, vehicles }) => {
     if (vehicles.length > 0) {
       const firstVehicle = vehicles[0];
       if (firstVehicle?.latitude && firstVehicle?.longitude) {
-        map.flyTo([firstVehicle.latitude, firstVehicle.longitude], 12);
+        map.setView([firstVehicle.latitude, firstVehicle.longitude], 12);
       }
     } else {
-      map.flyTo([-9.9306, -76.2422], 12); // Vista por defecto
+      map.setView([-9.9306, -76.2422], 12); // Vista por defecto
     }
   }, []);
 
