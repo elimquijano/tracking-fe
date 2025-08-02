@@ -1,5 +1,5 @@
 import * as React from "react";
-import { useEffect, useState, useContext } from "react";
+import { useEffect, useState, useContext, useCallback } from "react";
 import L from "leaflet";
 import "leaflet-rotatedmarker";
 import "leaflet/dist/leaflet.css";
@@ -47,7 +47,7 @@ import { theme } from "../theme/theme";
 import { IconEngineFilled } from "@tabler/icons-react";
 import RotatedMarker from "../components/RotatedMarker";
 
-// Asegúrate de que los iconos de los marcadores se muestren correctamente
+// Configuración de iconos
 delete L.Icon.Default.prototype._getIconUrl;
 L.Icon.Default.mergeOptions({
   iconRetinaUrl: require("leaflet/dist/images/marker-icon-2x.png"),
@@ -55,10 +55,47 @@ L.Icon.Default.mergeOptions({
   shadowUrl: require("leaflet/dist/images/marker-shadow.png"),
 });
 
+// Componente simple para controlar el mapa
+const MapController = ({ vehiculoActual, vehicles }) => {
+  const map = useMap();
+
+  useEffect(() => {
+    if (vehiculoActual) {
+      const vehicle = vehicles.find((v) => v.id === vehiculoActual);
+      if (vehicle?.latitude && vehicle?.longitude) {
+        map.setView([vehicle.latitude, vehicle.longitude], 17);
+      }
+    }
+  }, [vehicles, map]);
+
+  useEffect(() => {
+    if (vehiculoActual) {
+      const vehicle = vehicles.find((v) => v.id === vehiculoActual);
+      if (vehicle?.latitude && vehicle?.longitude) {
+        map.flyTo([vehicle.latitude, vehicle.longitude], 17);
+      }
+    } else {
+      map.flyTo([-9.9306, -76.2422], 12); // Vista por defecto
+    }
+  }, [vehiculoActual, map]);
+
+  useEffect(() => {
+    if (vehicles.length > 0) {
+      const firstVehicle = vehicles[0];
+      if (firstVehicle?.latitude && firstVehicle?.longitude) {
+        map.flyTo([firstVehicle.latitude, firstVehicle.longitude], 12);
+      }
+    } else {
+      map.flyTo([-9.9306, -76.2422], 12); // Vista por defecto
+    }
+  }, []);
+
+  return null;
+};
+
 const columns = [{ id: "name", label: "Placa", minWidth: 5, key: 1 }];
 
 export const MapaPage = () => {
-  const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
   const [showTable, setShowTable] = useState(true);
   const [vehiculos, setVehiculos] = useState([]);
@@ -69,56 +106,34 @@ export const MapaPage = () => {
   const [geofences, setGeofences] = useState([]);
   const [selectedGroup, setSelectedGroup] = useState(null);
   const [showFilters, setShowFilters] = useState(false);
-  const [routeCoordinates, setRouteCoordinates] = useState([]);
-  const [camera, setCamera] = useState({});
-  const [fly, setFly] = useState(false);
 
   const isMd = useMediaQuery((theme) => theme.breakpoints.up("md"));
-
   const { BaseLayer } = LayersControl;
   const { devices } = useContext(WebSocketContext);
 
+  // Inicialización
   useEffect(() => {
-    getGrupos();
-    getGeofences();
-    setLoading(false);
-    setCamera({
-      lat: -9.9306,
-      lng: -76.2422,
-      zoom: 12,
-    });
-    setFly(true);
-    setTimeout(() => {
-      setFly(false);
-    }, 1000);
+    const initializeMap = async () => {
+      try {
+        await Promise.all([getGrupos(), getGeofences()]);
+      } catch (error) {
+        console.error("Error initializing map:", error);
+      }
+    };
+    initializeMap();
   }, []);
 
+  // Actualización de dispositivos (sin throttling para evitar lag)
   useEffect(() => {
     if (devices === null || devices === undefined) {
-      setVehiculos([]); // Limpia los marcadores existentes
+      setVehiculos([]);
       return;
     }
     setVehiculos(devices);
-    if (vehiculoActual) {
-      const vehiculo = devices.find(
-        (vehiculo) => vehiculo.id === vehiculoActual
-      );
-      setRouteCoordinates((prevCoordinates) => [
-        ...prevCoordinates,
-        [vehiculo.latitude || 0, vehiculo.longitude || 0],
-      ]);
-    }
   }, [devices]);
 
+  // Filtrado de vehículos
   useEffect(() => {
-    if (vehiculoActual) {
-      setShowTable(false);
-    }
-    setRouteCoordinates([]);
-  }, [vehiculoActual]);
-
-  useEffect(() => {
-    // Filtrar la lista de vehículos cada vez que cambia el texto de búsqueda, el filtro de estado o el grupo seleccionado
     let filtered = vehiculos;
 
     if (searchTerm) {
@@ -142,56 +157,55 @@ export const MapaPage = () => {
     setFilteredVehiculos(filtered);
   }, [searchTerm, statusFilter, selectedGroup, vehiculos]);
 
-  const handleSearchChange = (event) => {
-    setSearchTerm(event.target.value); // Actualiza el texto de búsqueda
-  };
+  // Callbacks
+  const handleVehicleClick = useCallback((vehicleId) => {
+    setVehiculoActual(vehicleId);
+    setShowTable(false);
+  }, []);
 
-  const handleShowTable = () => {
+  const handleSearchChange = useCallback((event) => {
+    setSearchTerm(event.target.value);
+  }, []);
+
+  const handleShowTable = useCallback(() => {
     setShowTable(!showTable);
-  };
+  }, [showTable]);
 
-  const handleToggleFilters = () => {
+  const handleToggleFilters = useCallback(() => {
     setShowFilters(!showFilters);
-  };
+  }, [showFilters]);
 
-  const definirColorDeEstado = (estado) => {
-    let color = "";
+  const definirColorDeEstado = useCallback((estado) => {
     switch (estado) {
       case "online":
-        color = theme.palette.success.main;
-        break;
+        return theme.palette.success.main;
       case "offline":
-        color = theme.palette.error.main;
-        break;
+        return theme.palette.error.main;
       case "unknown":
-        color = theme.palette.warning.main;
-        break;
+        return theme.palette.warning.main;
       default:
-        break;
+        return theme.palette.grey.main;
     }
-    return color;
-  };
+  }, []);
 
-  const getTimeAgo = (fechaString) => {
+  const getTimeAgo = useCallback((fechaString) => {
     if (fechaString === null) return "Fuera de linea";
 
     const fechaPasada = new Date(fechaString);
     if (isNaN(fechaPasada.getTime())) return "Fecha inválida";
 
-    // Obtener hora actual y sumarle 5 horas
     const ahoraOriginal = new Date();
-    const ahora = new Date(ahoraOriginal.getTime() + 5 * 60 * 60 * 1000); // Suma 5 horas en milisegundos
-
+    const ahora = new Date(ahoraOriginal.getTime() + 5 * 60 * 60 * 1000);
     const diffMs = ahora.getTime() - fechaPasada.getTime();
 
-    if (diffMs < 0) return "Fecha en el futuro"; // Comparado contra (ahora + 5h)
+    if (diffMs < 0) return "Fecha en el futuro";
 
     const SEGUNDO = 1000,
       MINUTO = SEGUNDO * 60,
       HORA = MINUTO * 60,
       DIA = HORA * 24;
     const MES = DIA * 30.44,
-      ANO = DIA * 365.25; // Aproximaciones
+      ANO = DIA * 365.25;
 
     const diffYears = Math.round(diffMs / ANO);
     if (diffYears >= 1)
@@ -217,7 +231,7 @@ export const MapaPage = () => {
       return `Hace ${diffSeconds} segundo${diffSeconds > 1 ? "s" : ""}`;
 
     return "Hace unos segundos";
-  };
+  }, []);
 
   async function getGeofences() {
     try {
@@ -228,7 +242,6 @@ export const MapaPage = () => {
     }
   }
 
-  // Función para parsear un string de tipo CIRCLE
   function parseCircle(circleString) {
     const regex = /CIRCLE\s*\(\s*([-\d.]+)\s+([-\d.]+)\s*,\s*([\d.]+)\s*\)/;
     const match = circleString.match(regex);
@@ -241,7 +254,6 @@ export const MapaPage = () => {
     return null;
   }
 
-  // Función para parsear un string de tipo POLYGON
   function parsePolygon(polygonString) {
     const regex = /POLYGON\s*\(\(\s*([-\d.\s,]+)\s*\)\)/;
     const match = polygonString.match(regex);
@@ -256,7 +268,6 @@ export const MapaPage = () => {
     return null;
   }
 
-  // Función para parsear un string de tipo LINESTRING
   function parseLineString(lineString) {
     const regex = /LINESTRING\s*\(\s*([-\d.\s,]+)\s*\)/;
     const match = lineString.match(regex);
@@ -280,19 +291,7 @@ export const MapaPage = () => {
     }
   }
 
-  function CameraMapOnPoint({ lat, lng, zoom = 15 }) {
-    const map = useMap();
-
-    useEffect(() => {
-      if (lat && lng) {
-        map.flyTo([lat, lng], zoom);
-      }
-    }, [lat, lng, map]);
-
-    return null;
-  }
-
-  const restarCincoHoras = (dateString) => {
+  const restarCincoHoras = useCallback((dateString) => {
     if (!dateString) return "Fecha no disponible";
     try {
       const date = new Date(dateString);
@@ -311,58 +310,34 @@ export const MapaPage = () => {
       console.error("Error al formatear fecha:", error);
       return "Error en fecha";
     }
-  };
+  }, []);
 
-  const getStatusCounts = () => {
-    const counts = {
-      online: 0,
-      offline: 0,
-      unknown: 0,
-    };
+  const getStatusCounts = useCallback(() => {
+    const counts = { online: 0, offline: 0, unknown: 0 };
     vehiculos.forEach((vehiculo) => {
       if (vehiculo.status) {
         counts[vehiculo.status]++;
       }
     });
     return counts;
-  };
+  }, [vehiculos]);
 
   const statusCounts = getStatusCounts();
-
-  if (loading) {
-    return (
-      <Box
-        sx={{
-          display: "flex",
-          justifyContent: "center",
-          alignItems: "center",
-          minHeight: 400,
-        }}
-      >
-        <CircularProgress />
-      </Box>
-    );
-  }
+  const selectedVehicle = vehiculoActual
+    ? vehiculos.find((v) => v.id === vehiculoActual)
+    : null;
 
   return (
     <Box sx={{ height: "100%" }}>
       {vehiculos.length > 0 ? (
         <Paper
-          sx={{
-            width: "100%",
-            height: "100%",
-            overflow: "hidden",
-            padding: 1,
-          }}
+          sx={{ width: "100%", height: "100%", overflow: "hidden", padding: 1 }}
         >
           <Box sx={{ position: "relative", height: "100%" }}>
+            {/* Panel de control */}
             <Paper sx={{ position: "absolute", zIndex: 500, margin: 1 }}>
               <Stack direction="row" alignItems="center">
-                <Button
-                  color="primary"
-                  fullWidth
-                  onClick={() => handleShowTable()}
-                >
+                <Button color="primary" fullWidth onClick={handleShowTable}>
                   {showTable ? <ExpandLess /> : <ExpandMore />}
                 </Button>
               </Stack>
@@ -432,9 +407,9 @@ export const MapaPage = () => {
                             option.label + " (" + option.count + ")"
                           }
                           value={statusFilter}
-                          onChange={(event, newValue) => {
-                            setStatusFilter(newValue);
-                          }}
+                          onChange={(event, newValue) =>
+                            setStatusFilter(newValue)
+                          }
                           renderInput={(params) => (
                             <TextField
                               {...params}
@@ -448,9 +423,9 @@ export const MapaPage = () => {
                           options={grupos}
                           getOptionLabel={(option) => option.name}
                           value={selectedGroup}
-                          onChange={(event, newValue) => {
-                            setSelectedGroup(newValue);
-                          }}
+                          onChange={(event, newValue) =>
+                            setSelectedGroup(newValue)
+                          }
                           renderInput={(params) => (
                             <TextField
                               {...params}
@@ -468,25 +443,24 @@ export const MapaPage = () => {
                   >
                     <Table size="small">
                       <TableBody>
-                        {filteredVehiculos.map((row, index) => {
+                        {filteredVehiculos.map((row) => {
                           const tieneCoordenadas =
                             typeof row.latitude === "number" &&
                             typeof row.longitude === "number";
-
                           return (
                             <TableRow
-                              key={index}
+                              key={row.id}
                               hover
                               role="checkbox"
                               tabIndex={-1}
                               onClick={
                                 tieneCoordenadas
-                                  ? () => setVehiculoActual(row.id)
+                                  ? () => handleVehicleClick(row.id)
                                   : () => {}
                               }
                               sx={{ cursor: "pointer" }}
                             >
-                              {columns.map((column, index) => {
+                              {columns.map((column, colIndex) => {
                                 const value = row[column.id];
                                 const status = definirColorDeEstado(
                                   row["status"]
@@ -498,7 +472,10 @@ export const MapaPage = () => {
                                     ? getTimeAgo(row.lastUpdate)
                                     : "Desconocido";
                                 return (
-                                  <TableCell key={index} align={column.align}>
+                                  <TableCell
+                                    key={colIndex}
+                                    align={column.align}
+                                  >
                                     <Stack
                                       direction="row"
                                       alignItems="center"
@@ -554,10 +531,12 @@ export const MapaPage = () => {
                 </Box>
               )}
             </Paper>
+
+            {/* Mapa simplificado */}
             <MapContainer
               style={{ width: "100%", height: "100%" }}
-              center={[-9.9306, -76.2422]}
-              zoom={2}
+              center={[0, 0]}
+              zoom={1}
               zoomControl={false}
             >
               <LayersControl position="topright">
@@ -574,7 +553,7 @@ export const MapaPage = () => {
                     url="https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png"
                     attribution='© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors © <a href="https://carto.com/attributions">CARTO</a>'
                     subdomains={["a", "b", "c", "d"]}
-                    maxZoom={19} // Carto Voyager suele ir hasta zoom 19
+                    maxZoom={19}
                   />
                 </BaseLayer>
                 <BaseLayer name="OpenStreetMap">
@@ -608,50 +587,66 @@ export const MapaPage = () => {
                   />
                 </BaseLayer>
               </LayersControl>
+
               <ZoomControl position="bottomleft" />
-              {vehiculos.map((vehiculo, index) => {
-                const icon = L.icon({
-                  iconUrl:
-                    "https://static.vecteezy.com/system/resources/previews/025/312/642/large_2x/white-van-on-transparent-background-3d-rendering-illustration-free-png.png",
-                  iconSize: [32, 32], // Tamaño del icono
-                  iconAnchor: [16, 16], // Punto del icono que se alineará con la posición del marcador
-                  popupAnchor: [1, -12], // Punto desde el que se abrirá el popup en relación al icono
-                });
-                return (
-                  <RotatedMarker
-                    key={`marker-${index}`}
-                    title={vehiculo?.name}
-                    position={[
-                      vehiculo?.latitude || 0,
-                      vehiculo?.longitude || 0,
-                    ]}
-                    icon={icon}
-                    eventHandlers={{
-                      click: () => setVehiculoActual(vehiculo.id), // Maneja el clic en el marcador
-                    }}
-                    rotationOrigin={"center center"}
-                    rotationAngle={vehiculo?.course + 90 || 0}
-                  />
-                );
-              })}
 
+              <MapController
+                vehiculoActual={vehiculoActual}
+                vehicles={vehiculos}
+              />
+
+              {/* Renderizado DIRECTO de vehículos - Como Traccar */}
+              {filteredVehiculos
+                .filter(
+                  (vehiculo) =>
+                    vehiculo.latitude &&
+                    vehiculo.longitude &&
+                    !isNaN(vehiculo.latitude) &&
+                    !isNaN(vehiculo.longitude)
+                )
+                .map((vehiculo) => {
+                  const vehicleIcon = L.icon({
+                    iconUrl:
+                      "https://static.vecteezy.com/system/resources/previews/025/312/642/large_2x/white-van-on-transparent-background-3d-rendering-illustration-free-png.png",
+                    iconSize: [28, 28],
+                    iconAnchor: [14, 14],
+                    popupAnchor: [1, -12],
+                  });
+
+                  return (
+                    <RotatedMarker
+                      key={vehiculo.id}
+                      title={vehiculo.name}
+                      position={[vehiculo.latitude, vehiculo.longitude]}
+                      icon={vehicleIcon}
+                      eventHandlers={{
+                        click: () => handleVehicleClick(vehiculo.id),
+                      }}
+                      rotationOrigin="center center"
+                      rotationAngle={(vehiculo.course || 0) + 90}
+                    />
+                  );
+                })}
+
+              {/* Geofences */}
               {geofences.map((row, index) => {
-                let type;
-                let data;
+                let type, data;
+                const area = String(row.area);
 
-                if (String(row.area).includes("CIRCLE")) {
+                if (area.includes("CIRCLE")) {
                   type = "CIRCLE";
                   data = parseCircle(row.area);
-                } else if (String(row.area).includes("POLYGON")) {
+                } else if (area.includes("POLYGON")) {
                   type = "POLYGON";
                   data = parsePolygon(row.area);
-                } else if (String(row.area).includes("LINESTRING")) {
+                } else if (area.includes("LINESTRING")) {
                   type = "LINESTRING";
                   data = parseLineString(row.area);
                 }
 
                 const color = row?.attributes?.color || "blue";
-                if (type === "POLYGON") {
+
+                if (type === "POLYGON" && data) {
                   return (
                     <Polygon
                       key={index}
@@ -659,7 +654,7 @@ export const MapaPage = () => {
                       color={color}
                     />
                   );
-                } else if (type === "CIRCLE") {
+                } else if (type === "CIRCLE" && data) {
                   return (
                     <LeafletCircle
                       key={index}
@@ -668,7 +663,7 @@ export const MapaPage = () => {
                       color={color}
                     />
                   );
-                } else if (type === "LINESTRING") {
+                } else if (type === "LINESTRING" && data) {
                   return (
                     <Polyline
                       key={index}
@@ -679,306 +674,247 @@ export const MapaPage = () => {
                 }
                 return null;
               })}
-              {fly && (
-                <CameraMapOnPoint
-                  lat={camera?.lat}
-                  lng={camera?.lng}
-                  zoom={camera?.zoom}
-                />
-              )}
-              {vehiculoActual && (
-                <>
-                  <CameraMapOnPoint
-                    lat={
-                      vehiculos.find((v) => v.id == vehiculoActual)?.latitude ||
-                      0
-                    }
-                    lng={
-                      vehiculos.find((v) => v.id == vehiculoActual)
-                        ?.longitude || 0
-                    }
-                    zoom={17}
-                  />
+
+              {/* Círculo del vehículo seleccionado - SIN key cambiante */}
+              {selectedVehicle &&
+                selectedVehicle.latitude &&
+                selectedVehicle.longitude && (
                   <LeafletCircle
-                    key={`circle-${Math.random()}`}
                     center={[
-                      vehiculos.find((v) => v.id == vehiculoActual)?.latitude ||
-                        0,
-                      vehiculos.find((v) => v.id == vehiculoActual)
-                        ?.longitude || 0,
+                      selectedVehicle.latitude,
+                      selectedVehicle.longitude,
                     ]}
-                    radius={20} // Radio en metros
-                    color="rgba(0, 128, 0, 0.0)" // Color del borde en formato RGBA (verde opaco)
-                    fillColor="rgba(142, 36, 170, 0.2)"
-                    fillOpacity={1} // Opacidad del relleno
-                  />
-                  <Paper
-                    sx={{
-                      position: "absolute",
-                      zIndex: 500,
-                      bottom: 0,
-                      right: 0,
-                      borderRadius: 0,
-                      width: {
-                        xs: "calc(100% - 150px)",
-                        md: "480px",
-                      },
-                      margin: 0,
+                    radius={30}
+                    pathOptions={{
+                      color: "rgba(0, 128, 0, 0.0)",
+                      fillColor: "rgba(141, 36, 170, 1)",
+                      fillOpacity: 0.2,
                     }}
-                  >
-                    <Stack
-                      direction={"column"}
-                      style={{ position: "relative" }}
+                  />
+                )}
+
+              {/* Panel de vehículo seleccionado */}
+              {selectedVehicle && (
+                <Paper
+                  sx={{
+                    position: "absolute",
+                    zIndex: 500,
+                    bottom: 0,
+                    right: 0,
+                    borderRadius: 0,
+                    width: { xs: "calc(100% - 150px)", md: "480px" },
+                    margin: 0,
+                  }}
+                >
+                  <Stack direction={"column"} style={{ position: "relative" }}>
+                    <Button
+                      color="primary"
+                      fullWidth
+                      onClick={() => setVehiculoActual(null)}
                     >
-                      <Button
-                        color="primary"
-                        fullWidth
-                        onClick={() => setVehiculoActual(null)}
+                      <ExpandMore fontSize={isMd ? "medium" : "small"} />
+                    </Button>
+                    <>
+                      <Typography
+                        variant={isMd ? "h4" : "h5"}
+                        sx={{
+                          fontWeight: "bold",
+                          textAlign: "center",
+                          color: "primary.main",
+                        }}
                       >
-                        <ExpandMore fontSize={isMd ? "medium" : "small"} />
-                      </Button>
-                      <>
-                        <Typography
-                          variant={isMd ? "h4" : "h5"}
-                          sx={{
-                            fontWeight: "bold",
-                            textAlign: "center",
-                            color: "primary.main",
-                          }}
-                        >
-                          {vehiculos.find((v) => v.id == vehiculoActual)
-                            ?.name || "-"}
-                        </Typography>
-                        <Grid
-                          container
-                          spacing={isMd ? 1 : 0}
-                          sx={{ margin: 0 }}
-                        >
-                          <Grid item xs={12} md={6}>
-                            <Stack
-                              direction="row"
-                              spacing={isMd ? 2 : 1}
-                              alignItems="flex-start"
+                        {selectedVehicle.name || "-"}
+                      </Typography>
+                      <Grid container spacing={isMd ? 1 : 0} sx={{ margin: 0 }}>
+                        <Grid item xs={12} md={6}>
+                          <Stack
+                            direction="row"
+                            spacing={isMd ? 2 : 1}
+                            alignItems="flex-start"
+                          >
+                            <Typography
+                              variant={"caption"}
+                              sx={{ paddingLeft: 1, fontWeight: "bold" }}
                             >
-                              <Typography
-                                variant={"caption"}
-                                sx={{ paddingLeft: 1, fontWeight: "bold" }}
-                              >
-                                Velocidad:
-                              </Typography>
-                              <Typography variant={"caption"}>
-                                {Number(
-                                  vehiculos.find((v) => v.id == vehiculoActual)
-                                    ?.speed || 0
-                                ).toFixed(2)}{" "}
-                                Km/h
-                              </Typography>
-                            </Stack>
-                          </Grid>
-                          <Grid item xs={12} md={6}>
-                            <Stack
-                              direction="row"
-                              spacing={isMd ? 2 : 1}
-                              alignItems="flex-start"
-                            >
-                              <Typography
-                                variant={"caption"}
-                                sx={{ paddingLeft: 1, fontWeight: "bold" }}
-                              >
-                                Estado:
-                              </Typography>
-                              <Typography
-                                variant={"caption"}
-                                sx={{
-                                  color: definirColorDeEstado(
-                                    vehiculos.find(
-                                      (v) => v.id == vehiculoActual
-                                    )?.status
-                                  ),
-                                }}
-                              >
-                                {vehiculos.find((v) => v.id == vehiculoActual)
-                                  ?.status === "online"
-                                  ? "En linea"
-                                  : getTimeAgo(
-                                      vehiculos.find(
-                                        (v) => v.id == vehiculoActual
-                                      )?.lastUpdate
-                                    ) || "Desconocido"}
-                              </Typography>
-                            </Stack>
-                          </Grid>
-                          {isMd && (
-                            <>
-                              <Grid item xs={12} md={6}>
-                                <Stack
-                                  direction="row"
-                                  spacing={isMd ? 2 : 1}
-                                  alignItems="flex-start"
-                                >
-                                  <Typography
-                                    variant={"caption"}
-                                    sx={{ paddingLeft: 1, fontWeight: "bold" }}
-                                  >
-                                    Distancia Total:
-                                  </Typography>
-                                  <Typography variant={"caption"}>
-                                    {Number(
-                                      vehiculos.find(
-                                        (v) => v.id == vehiculoActual
-                                      )?.attributes?.totalDistance || 0
-                                    ).toFixed(2)}{" "}
-                                    km
-                                  </Typography>
-                                </Stack>
-                              </Grid>
-                              <Grid item xs={12} md={6}>
-                                <Stack
-                                  direction="row"
-                                  spacing={isMd ? 2 : 1}
-                                  alignItems="flex-start"
-                                >
-                                  <Typography
-                                    variant={"caption"}
-                                    sx={{ paddingLeft: 1, fontWeight: "bold" }}
-                                  >
-                                    Bateria:
-                                  </Typography>
-                                  <Typography variant={"caption"}>
-                                    {vehiculos.find(
-                                      (v) => v.id == vehiculoActual
-                                    )?.attributes?.batteryLevel || "100"}{" "}
-                                    %
-                                  </Typography>
-                                </Stack>
-                              </Grid>
-                              <Grid item xs={12} md={6}>
-                                <Stack
-                                  direction="row"
-                                  spacing={isMd ? 2 : 1}
-                                  alignItems="flex-start"
-                                >
-                                  <Typography
-                                    variant={"caption"}
-                                    sx={{ paddingLeft: 1, fontWeight: "bold" }}
-                                  >
-                                    Rumbo:
-                                  </Typography>
-                                  <Typography
-                                    variant={"caption"}
-                                    sx={{ position: "relative" }}
-                                  >
-                                    <Box
-                                      position="absolute"
-                                      sx={{
-                                        display: "flex",
-                                        alignItems: "center",
-                                        justifyContent: "center",
-                                        transform: `rotate(${
-                                          vehiculos.find(
-                                            (v) => v.id == vehiculoActual
-                                          )?.course + 90 || 0
-                                        }deg)`, // Rota el ícono según el heading
-                                      }}
-                                    >
-                                      <ArrowBack color="primary" fontSize="" />
-                                    </Box>
-                                  </Typography>
-                                </Stack>
-                              </Grid>
-                              <Grid item xs={12} md={6}>
-                                <Stack
-                                  direction="row"
-                                  spacing={isMd ? 2 : 1}
-                                  alignItems="flex-start"
-                                >
-                                  <Typography
-                                    variant={"caption"}
-                                    sx={{ paddingLeft: 1, fontWeight: "bold" }}
-                                  >
-                                    Motor:
-                                  </Typography>
-                                  <Typography variant={"caption"}>
-                                    <Box
-                                      sx={{
-                                        display: "flex",
-                                        alignItems: "center",
-                                        justifyContent: "center",
-                                      }}
-                                    >
-                                      <IconEngineFilled
-                                        color={
-                                          vehiculos.find(
-                                            (v) => v.id == vehiculoActual
-                                          )?.attributes?.ignition
-                                            ? "green"
-                                            : "red"
-                                        }
-                                        size={16}
-                                      />
-                                    </Box>
-                                  </Typography>
-                                </Stack>
-                              </Grid>
-                              <Grid item xs={12}>
-                                <Stack
-                                  direction="row"
-                                  spacing={isMd ? 2 : 1}
-                                  alignItems="flex-start"
-                                >
-                                  <Typography
-                                    variant={"caption"}
-                                    sx={{ paddingLeft: 1, fontWeight: "bold" }}
-                                  >
-                                    Última actualización:
-                                  </Typography>
-                                  <Typography variant={"caption"}>
-                                    {restarCincoHoras(
-                                      vehiculos.find(
-                                        (v) => v.id == vehiculoActual
-                                      )?.lastUpdate || ""
-                                    )}
-                                  </Typography>
-                                </Stack>
-                              </Grid>
-                            </>
-                          )}
+                              Velocidad:
+                            </Typography>
+                            <Typography variant={"caption"}>
+                              {Number(selectedVehicle.speed || 0).toFixed(2)}{" "}
+                              Km/h
+                            </Typography>
+                          </Stack>
                         </Grid>
-                        <GoogleStreetView
-                          latitude={
-                            vehiculos.find((v) => v.id == vehiculoActual)
-                              .latitude || 0
-                          }
-                          longitude={
-                            vehiculos.find((v) => v.id == vehiculoActual)
-                              .longitude || 0
-                          }
-                          heading={
-                            vehiculos.find((v) => v.id == vehiculoActual)
-                              ?.course || 0
-                          }
-                        />
-                      </>
-                    </Stack>
-                  </Paper>
-                </>
+                        <Grid item xs={12} md={6}>
+                          <Stack
+                            direction="row"
+                            spacing={isMd ? 2 : 1}
+                            alignItems="flex-start"
+                          >
+                            <Typography
+                              variant={"caption"}
+                              sx={{ paddingLeft: 1, fontWeight: "bold" }}
+                            >
+                              Estado:
+                            </Typography>
+                            <Typography
+                              variant={"caption"}
+                              sx={{
+                                color: definirColorDeEstado(
+                                  selectedVehicle.status
+                                ),
+                              }}
+                            >
+                              {selectedVehicle.status === "online"
+                                ? "En linea"
+                                : getTimeAgo(selectedVehicle.lastUpdate) ||
+                                  "Desconocido"}
+                            </Typography>
+                          </Stack>
+                        </Grid>
+                        {isMd && (
+                          <>
+                            <Grid item xs={12} md={6}>
+                              <Stack
+                                direction="row"
+                                spacing={isMd ? 2 : 1}
+                                alignItems="flex-start"
+                              >
+                                <Typography
+                                  variant={"caption"}
+                                  sx={{ paddingLeft: 1, fontWeight: "bold" }}
+                                >
+                                  Distancia Total:
+                                </Typography>
+                                <Typography variant={"caption"}>
+                                  {Number(
+                                    selectedVehicle.attributes?.totalDistance ||
+                                      0
+                                  ).toFixed(2)}{" "}
+                                  km
+                                </Typography>
+                              </Stack>
+                            </Grid>
+                            <Grid item xs={12} md={6}>
+                              <Stack
+                                direction="row"
+                                spacing={isMd ? 2 : 1}
+                                alignItems="flex-start"
+                              >
+                                <Typography
+                                  variant={"caption"}
+                                  sx={{ paddingLeft: 1, fontWeight: "bold" }}
+                                >
+                                  Bateria:
+                                </Typography>
+                                <Typography variant={"caption"}>
+                                  {selectedVehicle.attributes?.batteryLevel ||
+                                    "100"}{" "}
+                                  %
+                                </Typography>
+                              </Stack>
+                            </Grid>
+                            <Grid item xs={12} md={6}>
+                              <Stack
+                                direction="row"
+                                spacing={isMd ? 2 : 1}
+                                alignItems="flex-start"
+                              >
+                                <Typography
+                                  variant={"caption"}
+                                  sx={{ paddingLeft: 1, fontWeight: "bold" }}
+                                >
+                                  Rumbo:
+                                </Typography>
+                                <Typography
+                                  variant={"caption"}
+                                  sx={{ position: "relative" }}
+                                >
+                                  <Box
+                                    position="absolute"
+                                    sx={{
+                                      display: "flex",
+                                      alignItems: "center",
+                                      justifyContent: "center",
+                                      transform: `rotate(${
+                                        (selectedVehicle.course || 0) + 90
+                                      }deg)`,
+                                    }}
+                                  >
+                                    <ArrowBack color="primary" fontSize="" />
+                                  </Box>
+                                </Typography>
+                              </Stack>
+                            </Grid>
+                            <Grid item xs={12} md={6}>
+                              <Stack
+                                direction="row"
+                                spacing={isMd ? 2 : 1}
+                                alignItems="flex-start"
+                              >
+                                <Typography
+                                  variant={"caption"}
+                                  sx={{ paddingLeft: 1, fontWeight: "bold" }}
+                                >
+                                  Motor:
+                                </Typography>
+                                <Typography variant={"caption"}>
+                                  <Box
+                                    sx={{
+                                      display: "flex",
+                                      alignItems: "center",
+                                      justifyContent: "center",
+                                    }}
+                                  >
+                                    <IconEngineFilled
+                                      color={
+                                        selectedVehicle.attributes?.ignition
+                                          ? "green"
+                                          : "red"
+                                      }
+                                      size={16}
+                                    />
+                                  </Box>
+                                </Typography>
+                              </Stack>
+                            </Grid>
+                            <Grid item xs={12}>
+                              <Stack
+                                direction="row"
+                                spacing={isMd ? 2 : 1}
+                                alignItems="flex-start"
+                              >
+                                <Typography
+                                  variant={"caption"}
+                                  sx={{ paddingLeft: 1, fontWeight: "bold" }}
+                                >
+                                  Última actualización:
+                                </Typography>
+                                <Typography variant={"caption"}>
+                                  {restarCincoHoras(
+                                    selectedVehicle.lastUpdate || ""
+                                  )}
+                                </Typography>
+                              </Stack>
+                            </Grid>
+                          </>
+                        )}
+                      </Grid>
+                      <GoogleStreetView
+                        latitude={selectedVehicle.latitude || 0}
+                        longitude={selectedVehicle.longitude || 0}
+                        heading={selectedVehicle.course || 0}
+                      />
+                    </>
+                  </Stack>
+                </Paper>
               )}
-              {/* vehiculoActual && routeCoordinates.length > 1 && (
-                <Polyline
-                  positions={routeCoordinates}
-                  strokeWidth={2}
-                  strokeColor="primary.main"
-                />
-              ) */}
             </MapContainer>
           </Box>
         </Paper>
       ) : (
-        <Paper sx={{ width: "100%", overflow: "hidden" }} className="p-3">
-          <div className="alert alert-warning" role="alert">
-            No tiene ningún vehículo asignado.
-          </div>
-        </Paper>
+        <Box p={2} bgcolor="warning.light" color="warning.contrastText">
+          <Typography>No se encontraron resultados.</Typography>
+        </Box>
       )}
     </Box>
   );
