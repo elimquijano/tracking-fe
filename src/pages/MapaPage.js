@@ -55,6 +55,27 @@ L.Icon.Default.mergeOptions({
   shadowUrl: require("leaflet/dist/images/marker-shadow.png"),
 });
 
+const getIconUrl = (category) => {
+  switch (category) {
+    case "car":
+      return require("../assets/images/icons/auto.png");
+    case "motorcycle":
+      return require("../assets/images/icons/motocicleta.png");
+    case "scooter":
+      return require("../assets/images/icons/bajaj2.png");
+    case "trolleybus":
+      return require("../assets/images/icons/coaster.png");
+    case "pickup":
+      return require("../assets/images/icons/camioneta.png");
+    case "offroad":
+      return require("../assets/images/icons/camioneta.png");
+    case "bus":
+      return require("../assets/images/icons/minivan.png");
+    default:
+      return require("../assets/images/icons/auto.png");
+  }
+};
+
 // Componente simple para controlar el mapa
 const MapController = ({ vehiculoActual, vehicles }) => {
   const map = useMap();
@@ -606,11 +627,10 @@ export const MapaPage = () => {
                 )
                 .map((vehiculo) => {
                   const vehicleIcon = L.icon({
-                    iconUrl:
-                      "https://static.vecteezy.com/system/resources/previews/025/312/642/large_2x/white-van-on-transparent-background-3d-rendering-illustration-free-png.png",
-                    iconSize: [28, 28],
-                    iconAnchor: [14, 14],
-                    popupAnchor: [1, -12],
+                    iconUrl: getIconUrl(vehiculo?.category),
+                    iconSize: [42, 48], // Tamaño del icono, puedes ajustarlo según tus necesidades
+                    iconAnchor: [21, 24], // Punto del icono que corresponderá a la ubicación del marcador
+                    popupAnchor: [0, -12], // Punto desde el cual se abrirá el popup en relación con iconAnchor
                   });
 
                   return (

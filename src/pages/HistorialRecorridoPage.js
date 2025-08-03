@@ -45,6 +45,27 @@ import RotatedMarker from "../components/RotatedMarker";
 import { theme } from "../theme/theme";
 import { exportToExcel } from "../utils/exportToExcel";
 
+const getIconUrl = (category) => {
+  switch (category) {
+    case "car":
+      return require("../assets/images/icons/auto.png");
+    case "motorcycle":
+      return require("../assets/images/icons/motocicleta.png");
+    case "scooter":
+      return require("../assets/images/icons/bajaj2.png");
+    case "trolleybus":
+      return require("../assets/images/icons/coaster.png");
+    case "pickup":
+      return require("../assets/images/icons/camioneta.png");
+    case "offroad":
+      return require("../assets/images/icons/camioneta.png");
+    case "bus":
+      return require("../assets/images/icons/minivan.png");
+    default:
+      return require("../assets/images/icons/auto.png");
+  }
+};
+
 export const HistorialDeRecorridoPage = () => {
   const [filteredRows, setFilteredRows] = useState([]);
   const [searchFilter, setSearchFilter] = useState({
@@ -63,20 +84,15 @@ export const HistorialDeRecorridoPage = () => {
   const [mapKey, setMapKey] = useState(Date.now());
   const { BaseLayer } = LayersControl;
 
-  const getIcon = (iconUrl) =>
-    new L.Icon({
-      iconUrl:
-        iconUrl ||
-        "https://static.vecteezy.com/system/resources/previews/025/312/642/large_2x/white-van-on-transparent-background-3d-rendering-illustration-free-png.png",
-      iconSize: [35, 35],
-      iconAnchor: [17, 35],
-      popupAnchor: [0, -35],
+  const getIcon = (category) =>
+    new L.icon({
+      iconUrl: getIconUrl(category),
+      iconSize: [42, 48], // Tamaño del icono, puedes ajustarlo según tus necesidades
+      iconAnchor: [21, 24], // Punto del icono que corresponderá a la ubicación del marcador
+      popupAnchor: [0, -12], // Punto desde el cual se abrirá el popup en relación con iconAnchor
     });
 
   const currentRow = filteredRows[positionActual];
-  const iconUrl =
-    "https://static.vecteezy.com/system/resources/previews/025/312/642/large_2x/white-van-on-transparent-background-3d-rendering-illustration-free-png.png";
-  const customIcon = getIcon(iconUrl);
 
   useEffect(() => {
     const fetchVehiculos = async () => {
@@ -645,7 +661,10 @@ export const HistorialDeRecorridoPage = () => {
                     currentRow?.latitude || 0,
                     currentRow?.longitude || 0,
                   ]}
-                  icon={customIcon}
+                  icon={getIcon(
+                    vehiculos.find((v) => v.id === currentRow?.deviceId)
+                      ?.category
+                  )}
                   rotationOrigin={"center center"}
                   rotationAngle={currentRow?.course + 90 || 0}
                 >
