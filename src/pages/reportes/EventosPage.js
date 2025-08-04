@@ -1,0 +1,402 @@
+import * as React from 'react';
+import { useState, useEffect } from 'react';
+import {
+  Paper,
+  Table,
+  TableBody,
+  TableCell,
+  TableContainer,
+  TableHead,
+  TableRow,
+  Autocomplete,
+  MenuItem,
+  TextField,
+  Button,
+  Grid,
+  Box,
+  Alert
+} from '@mui/material';
+import SearchIcon from '@mui/icons-material/Search';
+import CleaningServicesIcon from '@mui/icons-material/CleaningServices';
+import DownloadIcon from '@mui/icons-material/Download';
+import { getTraccar } from '../../utils/common';
+import { notificationSwal } from '../../utils/swal-helpers';
+import { exportToExcel } from '../../utils/exportToExcel';
+import { columnsReportTraccarEventos } from '../../utils/ExportColumns';
+
+const types = [
+  { id: 'allEvents', name: 'Todos los eventos' },
+  { id: 'deviceOnline', name: 'Dispositivo en línea' },
+  { id: 'deviceUnknown', name: 'Dispositivo desconocido' },
+  { id: 'deviceOffline', name: 'Dispositivo fuera de línea' },
+  { id: 'deviceStopped', name: 'Dispositivo detenido' },
+  { id: 'deviceMoving', name: 'Dispositivo en movimiento' },
+  { id: 'deviceOverspeed', name: 'Dispositivo excediendo velocidad' },
+  { id: 'geofenceEnter', name: 'Ingreso a geocerca' },
+  { id: 'geofenceExit', name: 'Salida de geocerca' },
+  { id: 'alarm', name: 'Alarma' },
+  { id: 'ignitionOn', name: 'Encendido del motor' },
+  { id: 'ignitionOff', name: 'Apagado del motor' },
+  { id: 'maintenance', name: 'Mantenimiento' },
+  { id: 'commandResult', name: 'Resultado de comando' },
+  { id: 'deviceFuelDrop', name: 'Caída de combustible' },
+  { id: 'lowDCVoltage', name: 'Bajo voltaje DC' },
+  { id: 'highDCVoltage', name: 'Alto voltaje DC' },
+  { id: 'lowBatteryLevel', name: 'Bajo nivel de batería' },
+  { id: 'hardAcceleration', name: 'Aceleración brusca' },
+  { id: 'hardBraking', name: 'Frenado brusco' },
+  { id: 'hardCornering', name: 'Curva brusca' },
+  { id: 'powerCut', name: 'Corte de energía' },
+  { id: 'powerRestored', name: 'Energía restaurada' },
+  { id: 'tow', name: 'Remolque' },
+  { id: 'immobilizer', name: 'Inmovilización' },
+  { id: 'sos', name: 'SOS' },
+  { id: 'noMovement', name: 'Sin movimiento' },
+  { id: 'aggressiveDriving', name: 'Conducción agresiva' },
+  { id: 'idling', name: 'En espera' },
+  { id: 'accident', name: 'Accidente' }
+];
+
+const typesAlarms = [
+  { id: 'ignitionOn', name: 'Encendido' },
+  { id: 'ignitionOff', name: 'Apagado' },
+  { id: 'door', name: 'Puerta' },
+  { id: 'alarm', name: 'Alarma' },
+  { id: 'maintenance', name: 'Mantenimiento' },
+  { id: 'geofenceEnter', name: 'Ingreso a geocerca' },
+  { id: 'geofenceExit', name: 'Salida de geocerca' },
+  { id: 'overspeed', name: 'Exceso de velocidad' }
+];
+
+const columns = [
+  { id: 'deviceId', label: 'VEHICULO', minWidth: 170, key: 1 },
+  { id: 'eventTime', label: 'HORA FIJO', minWidth: 170, key: 1 },
+  { id: 'type', label: 'TIPO', minWidth: 170, key: 1 },
+  { id: 'attributes', label: 'DATOS', minWidth: 170, key: 1 },
+  { id: 'geofenceId', label: 'GEOCERCA', minWidth: 170, key: 1 },
+  { id: 'maintenanceId', label: 'MANTENIMIENTO', minWidth: 170, key: 1 }
+];
+
+export default function EventosPage() {
+  const [vehiculos, setVehiculos] = useState([]);
+  const [geocercas, setGeocercas] = useState([]);
+  const [searchFilter, setSearchFilter] = useState({ date_filter: 'today', type: 'allEvents' });
+  const [data, setData] = useState([]);
+  const [totalItems, setTotalItems] = useState(0);
+
+  useEffect(() => {
+    const fetchVehiculos = async () => {
+      try {
+        const result = await getTraccar('/devices');
+        if (result.status === 200) {
+          setVehiculos(result.data);
+        }
+      } catch (error) {
+        console.error('Error fetching data:', error);
+      }
+    };
+
+    const fetchGeocercas = async () => {
+      try {
+        const result = await getTraccar('/geofences');
+        if (result.status === 200) {
+          setGeocercas(result.data);
+        }
+      } catch (error) {
+        console.error('Error fetching data:', error);
+      }
+    };
+
+    fetchGeocercas();
+    fetchVehiculos();
+  }, []);
+
+  async function SearchFilter() {
+    if (!searchFilter.deviceId && !searchFilter.groupId) {
+      notificationSwal('error', 'Debe seleccionar un dispositivo o un grupo');
+      return;
+    }
+    const { from, to } = calculateDateRange(searchFilter.date_filter);
+    try {
+      const result = await getTraccar(
+        '/reports/events' + construirUrl({ ...searchFilter, from: from, to: to, from_date: undefined, to_date: undefined })
+      );
+      if (result.status === 200) {
+        const dataParsed = result.data.map((item) => ({
+          ...item,
+          eventTime: restarCincoHoras(item.eventTime),
+          deviceId: vehiculos.find((vehiculo) => vehiculo.id === item.deviceId)?.name,
+          geofenceId: geocercas.find((geocerca) => geocerca.id === item.geofenceId)?.name,
+          type: types.find((type) => type.id === item.type)?.name,
+          attributes: item.attributes.alarm ? typesAlarms.find((t) => t.id === item.attributes.alarm)?.name : '',
+          maintenanceId: [].find((mantenimiento) => mantenimiento.id === item.maintenanceId)?.name
+        }));
+        setData(dataParsed);
+        if (dataParsed.length === 0) {
+          notificationSwal('info', 'No se encontraron datos');
+        }
+      }
+    } catch (error) {
+      notificationSwal('error', error);
+    }
+  }
+
+  useEffect(() => {
+    setTotalItems(data.length);
+  }, [data]);
+
+  const construirUrl = (params) => {
+    const queryParts = [];
+    for (const key in params) {
+      if (params[key] !== undefined && params[key] !== null) {
+        queryParts.push(`${encodeURIComponent(key)}=${encodeURIComponent(params[key])}`);
+      }
+    }
+    return queryParts.length > 0 ? `?${queryParts.join('&')}` : '';
+  };
+
+  function CleanFilter() {
+    setData([]);
+    setSearchFilter({ date_filter: 'today', type: 'allEvents', from_date: '', to_date: '' });
+  }
+
+  const handleSearchChange = (event) => {
+    const { name, value } = event.target;
+    setSearchFilter((prevSearch) => ({
+      ...prevSearch,
+      [name]: value
+    }));
+  };
+
+  const ExportFilter = async () => {
+    try {
+      const dataParse = data.map((item) => ({
+        ...item
+      }));
+      exportToExcel(dataParse, columnsReportTraccarEventos, 'Eventos');
+    } catch (error) {
+      console.error('Error al exportar los datos:', error);
+    }
+  };
+
+  const calculateDateRange = (dateFilter) => {
+    const todayReference = new Date();
+    let from, to;
+    switch (dateFilter) {
+      case 'today':
+        from = new Date(todayReference);
+        from.setHours(0, 0, 0, 0);
+        to = new Date(todayReference);
+        to.setHours(23, 59, 59, 999);
+        break;
+      case 'yesterday':
+        from = new Date(todayReference);
+        from.setDate(from.getDate() - 1);
+        from.setHours(0, 0, 0, 0);
+        to = new Date(from);
+        to.setHours(23, 59, 59, 999);
+        break;
+      case 'this_week':
+        from = new Date(todayReference);
+        from.setDate(from.getDate() - (from.getDay() || 7) + 1);
+        from.setHours(0, 0, 0, 0);
+        to = new Date(from);
+        to.setDate(to.getDate() + 6);
+        to.setHours(23, 59, 59, 999);
+        break;
+      case 'prev_week':
+        from = new Date(todayReference);
+        from.setDate(from.getDate() - (from.getDay() || 7) + 1 - 7);
+        from.setHours(0, 0, 0, 0);
+        to = new Date(from);
+        to.setDate(to.getDate() + 6);
+        to.setHours(23, 59, 59, 999);
+        break;
+      case 'this_month':
+        from = new Date(todayReference.getFullYear(), todayReference.getMonth(), 1);
+        to = new Date(todayReference.getFullYear(), todayReference.getMonth() + 1, 0);
+        to.setHours(23, 59, 59, 999);
+        break;
+      case 'prev_month':
+        from = new Date(todayReference.getFullYear(), todayReference.getMonth() - 1, 1);
+        to = new Date(todayReference.getFullYear(), todayReference.getMonth(), 0);
+        to.setHours(23, 59, 59, 999);
+        break;
+      case 'custom':
+        from = new Date(searchFilter.from_date);
+        to = new Date(searchFilter.to_date);
+        break;
+      default:
+        from = new Date(todayReference);
+        from.setHours(0, 0, 0, 0);
+        to = new Date(todayReference);
+        to.setHours(23, 59, 59, 999);
+    }
+    return {
+      from: from.toISOString(),
+      to: to.toISOString()
+    };
+  };
+
+  const restarCincoHoras = (dateString) => {
+    if (!dateString) return 'Fecha no disponible';
+    try {
+      const date = new Date(dateString);
+      const formatter = new Intl.DateTimeFormat('es-PE', {
+        timeZone: 'America/Lima',
+        year: 'numeric',
+        month: '2-digit',
+        day: '2-digit',
+        hour: '2-digit',
+        minute: '2-digit',
+        second: '2-digit',
+        hour12: false
+      });
+      return formatter.format(date);
+    } catch (error) {
+      console.error('Error al formatear fecha:', error);
+      return 'Error en fecha';
+    }
+  };
+
+  return (
+    <Box sx={{ p: 2 }}>
+      <Grid container spacing={2}>
+        <Grid item xs={12} md={9}>
+          <Grid container spacing={2}>
+            <Grid item xs={6} md={4}>
+              <Box sx={{ mb: 1 }}>
+                <label htmlFor="deviceId">Vehículo:</label>
+              </Box>
+              <Autocomplete
+                size="small"
+                options={vehiculos}
+                getOptionLabel={(option) => option.name}
+                onChange={(event, newValue) => {
+                  setSearchFilter({ ...searchFilter, deviceId: newValue ? newValue.id : '' });
+                }}
+                value={vehiculos.find((d) => d.id === searchFilter.deviceId) || null}
+                renderInput={(params) => <TextField {...params} />}
+              />
+            </Grid>
+            <Grid item xs={6} md={4}>
+              <Box sx={{ mb: 1 }}>
+                <label htmlFor="date_filter">Periodo:</label>
+              </Box>
+              <TextField
+                select
+                name="date_filter"
+                value={searchFilter.date_filter || ''}
+                onChange={handleSearchChange}
+                size="small"
+                fullWidth
+              >
+                <MenuItem value="today">Hoy</MenuItem>
+                <MenuItem value="yesterday">Ayer</MenuItem>
+                <MenuItem value="this_week">Esta semana</MenuItem>
+                <MenuItem value="prev_week">Semana Anterior</MenuItem>
+                <MenuItem value="this_month">Este mes</MenuItem>
+                <MenuItem value="prev_month">Mes Anterior</MenuItem>
+                <MenuItem value="custom">Personalizado</MenuItem>
+              </TextField>
+            </Grid>
+            {searchFilter.date_filter === 'custom' && (
+              <>
+                <Grid item xs={6} md={2}>
+                  <Box sx={{ mb: 1 }}>
+                    <label htmlFor="from_date">Desde:</label>
+                  </Box>
+                  <TextField
+                    type="datetime-local"
+                    name="from_date"
+                    value={searchFilter.from_date || ''}
+                    onChange={handleSearchChange}
+                    size="small"
+                    fullWidth
+                  />
+                </Grid>
+                <Grid item xs={6} md={2}>
+                  <Box sx={{ mb: 1 }}>
+                    <label htmlFor="to_date">Hasta:</label>
+                  </Box>
+                  <TextField
+                    type="datetime-local"
+                    name="to_date"
+                    value={searchFilter.to_date || ''}
+                    onChange={handleSearchChange}
+                    size="small"
+                    fullWidth
+                  />
+                </Grid>
+              </>
+            )}
+            <Grid item xs={6} md={4}>
+              <Box sx={{ mb: 1 }}>
+                <label htmlFor="type">Tipos de Evento:</label>
+              </Box>
+              <Autocomplete
+                size="small"
+                options={types}
+                getOptionLabel={(option) => option.name}
+                onChange={(event, newValue) => {
+                  setSearchFilter({ ...searchFilter, type: newValue ? newValue.id : '' });
+                }}
+                value={types.find((t) => t.id === searchFilter.type) || null}
+                renderInput={(params) => <TextField {...params} />}
+              />
+            </Grid>
+          </Grid>
+        </Grid>
+        <Grid item xs={12} md={3}>
+          <Grid container spacing={2}>
+            <Grid item xs={12}>
+              <Button variant="contained" color="success" startIcon={<SearchIcon />} onClick={SearchFilter} fullWidth>
+                Buscar
+              </Button>
+            </Grid>
+            <Grid item xs={12}>
+              <Button variant="contained" color="warning" startIcon={<DownloadIcon />} onClick={ExportFilter} fullWidth>
+                Exportar
+              </Button>
+            </Grid>
+            <Grid item xs={12}>
+              <Button variant="contained" color="error" startIcon={<CleaningServicesIcon />} onClick={CleanFilter} fullWidth>
+                Limpiar
+              </Button>
+            </Grid>
+          </Grid>
+        </Grid>
+      </Grid>
+      <Paper sx={{ width: '100%', overflow: 'hidden', mt: 2 }}>
+        {totalItems > 0 ? (
+          <TableContainer>
+            <Table stickyHeader aria-label="sticky table">
+              <TableHead>
+                <TableRow>
+                  {columns.map((column) => (
+                    <TableCell key={column.key} align={column.align}>
+                      {column.label}
+                    </TableCell>
+                  ))}
+                </TableRow>
+              </TableHead>
+              <TableBody>
+                {data.map((row) => (
+                  <TableRow hover role="checkbox" tabIndex={-1} key={row.id}>
+                    {columns.map((column) => (
+                      <TableCell key={column.id} align={column.align}>
+                        {row[column.id] || ''}
+                      </TableCell>
+                    ))}
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </TableContainer>
+        ) : (
+          <Alert severity="warning">No se encontraron resultados.</Alert>
+        )}
+      </Paper>
+    </Box>
+  );
+}

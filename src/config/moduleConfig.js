@@ -19,7 +19,6 @@ import { Modules } from "../pages/Modules";
 import { Settings as SettingsPage } from "../pages/Settings";
 
 // Importar nuevos componentes
-import { EventosPage } from "../pages/EventosPage";
 import { MapaPage } from "../pages/MapaPage";
 import { DispositivosGeozonaPage } from "../pages/DispositivosGeozonaPage";
 
@@ -40,8 +39,13 @@ import {
   DirectionsBus,
 } from "@mui/icons-material";
 import { GeozonasPage } from "../pages/GeozonasPage";
-import { ViajesPage } from "../pages/ViajesPage";
 import { HistorialDeRecorridoPage } from "../pages/HistorialRecorridoPage";
+import EventosPage from "../pages/reportes/EventosPage";
+import ViajesPage from "../pages/reportes/ViajesPage";
+import CombinadoPage from "../pages/reportes/CombinadoPage";
+import ParadasPage from "../pages/reportes/ParadasPage";
+import ResumenPage from "../pages/reportes/ResumenPage";
+import RutaPage from "../pages/reportes/RutaPage";
 
 // Mapeo de componentes - AQUÍ AGREGAS NUEVOS COMPONENTES
 export const componentMap = {
@@ -65,7 +69,11 @@ export const componentMap = {
   MapaPage,
   GeozonasPage,
   DispositivosGeozonaPage,
+  CombinadoPage,
   EventosPage,
+  ParadasPage,
+  ResumenPage,
+  RutaPage,
   ViajesPage,
   HistorialDeRecorridoPage,
 };
