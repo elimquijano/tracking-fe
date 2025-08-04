@@ -28,13 +28,17 @@ import {
   Stack,
   Grid,
   useMediaQuery,
+  IconButton,
 } from "@mui/material";
 import {
   ArrowBack,
   Circle,
   Close,
+  Edit,
   ExpandLess,
   ExpandMore,
+  History,
+  Share,
   Tune,
 } from "@mui/icons-material";
 import { Circle as LeafletCircle } from "react-leaflet";
@@ -45,6 +49,7 @@ import { theme } from "../theme/theme";
 import { IconEngineFilled } from "@tabler/icons-react";
 import RotatedMarker from "../components/RotatedMarker";
 import Draggable from "react-draggable";
+import { Link } from "react-router-dom";
 
 // Configuración de iconos
 delete L.Icon.Default.prototype._getIconUrl;
@@ -788,240 +793,270 @@ export const MapaPage = () => {
 
             {/* Panel de vehículo seleccionado */}
             {vehiculoActual && (
-              <Draggable handle=".handle">
-                <Paper
-                  onMouseDown={(e) => e.stopPropagation()}
-                  sx={{
-                    position: "absolute",
-                    zIndex: 1000, // Aumentado para estar por encima de otros elementos
-                    bottom: 20,
-                    borderRadius: 0,
-                    left: "50%",
-                    transform: "translateX(-50%)",
-                    width: { xs: "calc(100% - 40px)", md: "480px" },
-                    margin: 0,
-                    boxShadow: "0px 0px 15px rgba(0,0,0,0.2)",
-                  }}
-                >
-                  <Stack direction={"column"} style={{ position: "relative" }}>
+              <Box
+                sx={{
+                  position: "absolute",
+                  bottom: 20,
+                  width: "100%",
+                  display: "flex",
+                  justifyContent: "center",
+                  zIndex: 1000,
+                  pointerEvents: "none", // Permite clics en el mapa
+                }}
+              >
+                <Draggable handle=".handle">
+                  <Paper
+                    onMouseDown={(e) => e.stopPropagation()}
+                    sx={{
+                      pointerEvents: "auto", // Reactiva eventos para el panel
+                      borderRadius: 0,
+                      width: { xs: "calc(100% - 40px)", md: "480px" },
+                      margin: 0,
+                      padding: 2,
+                      boxShadow: "0px 0px 15px rgba(0,0,0,0.2)",
+                    }}
+                  >
                     <Stack
-                      className="handle"
-                      direction={"row"}
-                      justifyContent={"space-between"}
-                      alignItems="center"
-                      sx={{
-                        cursor: "move",
-                        paddingLeft: 2,
-                      }}
+                      direction={"column"}
+                      style={{ position: "relative" }}
                     >
-                      <Typography
-                        variant={isMd ? "h6" : "subtitle1"}
+                      <Stack
+                        className="handle"
+                        direction={"row"}
+                        justifyContent={"space-between"}
+                        alignItems={"center"}
                         sx={{
-                          fontWeight: "bold",
-                          color: "primary.main",
+                          cursor: "move",
+                          marginBottom: 1,
                         }}
                       >
-                        {vehiculos.find((v) => v.id === vehiculoActual).name ||
-                          "-"}
-                      </Typography>
-                      <Button
-                        color="primary"
-                        onClick={() => setVehiculoActual(null)}
-                        sx={{ minWidth: "auto", padding: 1 }}
-                      >
-                        <Close fontSize={isMd ? "medium" : "small"} />
-                      </Button>
-                    </Stack>
-                    <Box sx={{ padding: 2 }}>
-                      <Grid container spacing={isMd ? 2 : 1}>
-                        <Grid item xs={12} md={6}>
-                          <Stack
-                            direction="row"
-                            spacing={1}
-                            alignItems="center"
-                          >
-                            <Typography
-                              variant={"caption"}
-                              sx={{ fontWeight: "bold" }}
+                        <Typography
+                          variant={isMd ? "h4" : "h6"}
+                          sx={{
+                            fontWeight: "bold",
+                            color: "primary.main",
+                          }}
+                        >
+                          {vehiculos.find((v) => v.id === vehiculoActual)
+                            .name || "-"}
+                        </Typography>
+                        <Button
+                          color="primary"
+                          onClick={() => setVehiculoActual(null)}
+                          sx={{ minWidth: "auto" }}
+                        >
+                          <Close fontSize={isMd ? "medium" : "small"} />
+                        </Button>
+                      </Stack>
+                      <Box>
+                        <Grid container spacing={isMd ? 2 : 1}>
+                          <Grid item xs={12} md={6}>
+                            <Stack
+                              direction="row"
+                              spacing={1}
+                              alignItems={"center"}
                             >
-                              Velocidad:
-                            </Typography>
-                            <Typography variant={"caption"}>
-                              {Number(
-                                marcadores?.find(
-                                  (m) => m.deviceId === vehiculoActual
-                                )?.speed || 0
-                              ).toFixed(2)}{" "}
-                              Km/h
-                            </Typography>
-                          </Stack>
-                        </Grid>
-                        <Grid item xs={12} md={6}>
-                          <Stack
-                            direction="row"
-                            spacing={1}
-                            alignItems="center"
-                          >
-                            <Typography
-                              variant={"caption"}
-                              sx={{ fontWeight: "bold" }}
+                              <Typography
+                                variant={"caption"}
+                                sx={{ fontWeight: "bold" }}
+                              >
+                                Velocidad:
+                              </Typography>
+                              <Typography variant={"caption"}>
+                                {Number(
+                                  marcadores?.find(
+                                    (m) => m.deviceId === vehiculoActual
+                                  )?.speed || 0
+                                ).toFixed(2)}{" "}
+                                Km/h
+                              </Typography>
+                            </Stack>
+                          </Grid>
+                          <Grid item xs={12} md={6}>
+                            <Stack
+                              direction="row"
+                              spacing={1}
+                              alignItems={"center"}
                             >
-                              Estado:
-                            </Typography>
-                            <Typography
-                              variant={"caption"}
-                              sx={{
-                                color: definirColorDeEstado(
-                                  vehiculos.find((v) => v.id === vehiculoActual)
-                                    .status
-                                ),
-                              }}
-                            >
-                              {vehiculos.find((v) => v.id === vehiculoActual)
-                                .status === "online"
-                                ? "En linea"
-                                : getTimeAgo(
+                              <Typography
+                                variant={"caption"}
+                                sx={{ fontWeight: "bold" }}
+                              >
+                                Estado:
+                              </Typography>
+                              <Typography
+                                variant={"caption"}
+                                sx={{
+                                  color: definirColorDeEstado(
                                     vehiculos.find(
                                       (v) => v.id === vehiculoActual
-                                    ).lastUpdate
-                                  ) || "Desconocido"}
-                            </Typography>
-                          </Stack>
-                        </Grid>
-                        <Grid item xs={12} md={6}>
-                          <Stack
-                            direction="row"
-                            spacing={1}
-                            alignItems="center"
-                          >
-                            <Typography
-                              variant={"caption"}
-                              sx={{ fontWeight: "bold" }}
+                                    ).status
+                                  ),
+                                }}
+                              >
+                                {vehiculos.find((v) => v.id === vehiculoActual)
+                                  .status === "online"
+                                  ? "En linea"
+                                  : getTimeAgo(
+                                      vehiculos.find(
+                                        (v) => v.id === vehiculoActual
+                                      ).lastUpdate
+                                    ) || "Desconocido"}
+                              </Typography>
+                            </Stack>
+                          </Grid>
+                          <Grid item xs={12} md={6}>
+                            <Stack
+                              direction="row"
+                              spacing={1}
+                              alignItems={"center"}
                             >
-                              Distancia Total:
-                            </Typography>
-                            <Typography variant={"caption"}>
-                              {Number(
-                                marcadores?.find(
+                              <Typography
+                                variant={"caption"}
+                                sx={{ fontWeight: "bold" }}
+                              >
+                                Distancia Total:
+                              </Typography>
+                              <Typography variant={"caption"}>
+                                {Number(
+                                  marcadores?.find(
+                                    (m) => m.deviceId === vehiculoActual
+                                  )?.attributes?.totalDistance || 0
+                                ).toFixed(2)}{" "}
+                                km
+                              </Typography>
+                            </Stack>
+                          </Grid>
+                          <Grid item xs={12} md={6}>
+                            <Stack
+                              direction="row"
+                              spacing={1}
+                              alignItems={"center"}
+                            >
+                              <Typography
+                                variant={"caption"}
+                                sx={{ fontWeight: "bold" }}
+                              >
+                                Bateria:
+                              </Typography>
+                              <Typography variant={"caption"}>
+                                {marcadores?.find(
                                   (m) => m.deviceId === vehiculoActual
-                                )?.attributes?.totalDistance || 0
-                              ).toFixed(2)}{" "}
-                              km
-                            </Typography>
-                          </Stack>
-                        </Grid>
-                        <Grid item xs={12} md={6}>
-                          <Stack
-                            direction="row"
-                            spacing={1}
-                            alignItems="center"
-                          >
-                            <Typography
-                              variant={"caption"}
-                              sx={{ fontWeight: "bold" }}
+                                )?.attributes?.batteryLevel || "100"}{" "}
+                                %
+                              </Typography>
+                            </Stack>
+                          </Grid>
+                          <Grid item xs={12} md={6}>
+                            <Stack
+                              direction="row"
+                              spacing={1}
+                              alignItems={"center"}
                             >
-                              Bateria:
-                            </Typography>
-                            <Typography variant={"caption"}>
-                              {marcadores?.find(
-                                (m) => m.deviceId === vehiculoActual
-                              )?.attributes?.batteryLevel || "100"}{" "}
-                              %
-                            </Typography>
-                          </Stack>
-                        </Grid>
-                        <Grid item xs={12} md={6}>
-                          <Stack
-                            direction="row"
-                            spacing={1}
-                            alignItems="center"
-                          >
-                            <Typography
-                              variant={"caption"}
-                              sx={{ fontWeight: "bold" }}
-                            >
-                              Rumbo:
-                            </Typography>
-                            <Typography
-                              variant={"caption"}
-                              sx={{ position: "relative" }}
-                            >
-                              <Box
-                                sx={{
-                                  display: "flex",
-                                  alignItems: "center",
-                                  justifyContent: "center",
-                                  transform: `rotate(${
-                                    (marcadores?.find(
-                                      (m) => m.deviceId === vehiculoActual
-                                    )?.course || 0) + 90
-                                  }deg)`,
-                                }}
+                              <Typography
+                                variant={"caption"}
+                                sx={{ fontWeight: "bold" }}
                               >
-                                <ArrowBack color="primary" fontSize="small" />
-                              </Box>
-                            </Typography>
-                          </Stack>
-                        </Grid>
-                        <Grid item xs={12} md={6}>
-                          <Stack
-                            direction="row"
-                            spacing={1}
-                            alignItems="center"
-                          >
-                            <Typography
-                              variant={"caption"}
-                              sx={{ fontWeight: "bold" }}
-                            >
-                              Motor:
-                            </Typography>
-                            <Typography variant={"caption"}>
-                              <Box
-                                sx={{
-                                  display: "flex",
-                                  alignItems: "center",
-                                  justifyContent: "center",
-                                }}
+                                Rumbo:
+                              </Typography>
+                              <Typography
+                                variant={"caption"}
+                                sx={{ position: "relative" }}
                               >
-                                <IconEngineFilled
-                                  color={
-                                    marcadores?.find(
-                                      (m) => m.deviceId === vehiculoActual
-                                    )?.attributes?.ignition
-                                      ? "green"
-                                      : "red"
-                                  }
-                                  size={16}
-                                />
-                              </Box>
-                            </Typography>
-                          </Stack>
-                        </Grid>
-                        <Grid item xs={12}>
-                          <Stack
-                            direction="row"
-                            spacing={1}
-                            alignItems="center"
-                          >
-                            <Typography
-                              variant={"caption"}
-                              sx={{ fontWeight: "bold" }}
+                                <Box
+                                  sx={{
+                                    display: "flex",
+                                    alignItems: "center",
+                                    justifyContent: "center",
+                                    transform: `rotate(${
+                                      (marcadores?.find(
+                                        (m) => m.deviceId === vehiculoActual
+                                      )?.course || 0) + 90
+                                    }deg)`,
+                                  }}
+                                >
+                                  <ArrowBack color="primary" fontSize="small" />
+                                </Box>
+                              </Typography>
+                            </Stack>
+                          </Grid>
+                          <Grid item xs={12} md={6}>
+                            <Stack
+                              direction="row"
+                              spacing={1}
+                              alignItems={"center"}
                             >
-                              Última actualización:
-                            </Typography>
-                            <Typography variant={"caption"}>
-                              {restarCincoHoras(
-                                vehiculos.find((v) => v.id === vehiculoActual)
-                                  .lastUpdate || ""
-                              )}
-                            </Typography>
-                          </Stack>
+                              <Typography
+                                variant={"caption"}
+                                sx={{ fontWeight: "bold" }}
+                              >
+                                Motor:
+                              </Typography>
+                              <Typography variant={"caption"}>
+                                <Box
+                                  sx={{
+                                    display: "flex",
+                                    alignItems: "center",
+                                    justifyContent: "center",
+                                  }}
+                                >
+                                  <IconEngineFilled
+                                    color={
+                                      marcadores?.find(
+                                        (m) => m.deviceId === vehiculoActual
+                                      )?.attributes?.ignition
+                                        ? "green"
+                                        : "red"
+                                    }
+                                    size={16}
+                                  />
+                                </Box>
+                              </Typography>
+                            </Stack>
+                          </Grid>
+                          <Grid item xs={12}>
+                            <Stack
+                              direction="row"
+                              spacing={1}
+                              alignItems={"center"}
+                            >
+                              <Typography
+                                variant={"caption"}
+                                sx={{ fontWeight: "bold" }}
+                              >
+                                Última actualización:
+                              </Typography>
+                              <Typography variant={"caption"}>
+                                {restarCincoHoras(
+                                  vehiculos.find((v) => v.id === vehiculoActual)
+                                    .lastUpdate || ""
+                                )}
+                              </Typography>
+                            </Stack>
+                          </Grid>
                         </Grid>
-                      </Grid>
-                    </Box>
-                  </Stack>
-                </Paper>
-              </Draggable>
+                      </Box>
+                      <Box sx={{ marginTop: 1 }}>
+                        <Stack direction="row" justifyContent="space-between">
+                          <IconButton size="small" onClick={() => {}}>
+                            <Edit />
+                          </IconButton>
+                          <IconButton
+                            size="small"
+                            component={Link}
+                            to={`/dashboard/transporte/historial/${vehiculoActual}`}
+                          >
+                            <History />
+                          </IconButton>
+                          <IconButton size="small" onClick={() => {}}>
+                            <Share />
+                          </IconButton>
+                        </Stack>
+                      </Box>
+                    </Stack>
+                  </Paper>
+                </Draggable>
+              </Box>
             )}
           </Box>
         </Paper>
