@@ -8,7 +8,6 @@ import {
   LayersControl,
   TileLayer,
   ZoomControl,
-  Marker,
   Polygon,
   Polyline,
   useMap,
@@ -29,7 +28,6 @@ import {
   Stack,
   Grid,
   useMediaQuery,
-  CircularProgress,
 } from "@mui/material";
 import {
   ArrowBack,
@@ -77,37 +75,37 @@ const getIconUrl = (category) => {
 };
 
 // Componente simple para controlar el mapa
-const MapController = ({ vehiculoActual, vehicles }) => {
+const MapController = ({ vehiculoActual, marcadores }) => {
   const map = useMap();
 
   useEffect(() => {
     if (vehiculoActual) {
-      const vehicle = vehicles.find((v) => v.id === vehiculoActual);
-      if (vehicle?.latitude && vehicle?.longitude) {
-        map.setView([vehicle.latitude, vehicle.longitude], 17);
+      const marcador = marcadores?.find(m => m.deviceId === vehiculoActual);
+      if (marcador?.latitude && marcador?.longitude) {
+        map.setView([marcador.latitude, marcador.longitude], 17);
       }
     }
-  }, [vehicles, map]);
+  }, [marcadores, map]);
 
   useEffect(() => {
     if (vehiculoActual) {
-      const vehicle = vehicles.find((v) => v.id === vehiculoActual);
-      if (vehicle?.latitude && vehicle?.longitude) {
-        map.flyTo([vehicle.latitude, vehicle.longitude], 17);
+      const marcador = marcadores?.find(m => m.deviceId === vehiculoActual);
+      if (marcador?.latitude && marcador?.longitude) {
+        map.flyTo([marcador.latitude, marcador.longitude], 17);
       }
     } else {
-      map.flyTo([-9.9306, -76.2422], 12); // Vista por defecto
+      map.flyTo([-9.9306, -76.2422], 10); // Vista por defecto
     }
   }, [vehiculoActual, map]);
 
   useEffect(() => {
-    if (vehicles.length > 0) {
-      const firstVehicle = vehicles[0];
+    if (marcadores?.length > 0) {
+      const firstVehicle = marcadores[0];
       if (firstVehicle?.latitude && firstVehicle?.longitude) {
-        map.setView([firstVehicle.latitude, firstVehicle.longitude], 12);
+        map.setView([firstVehicle.latitude, firstVehicle.longitude], 10);
       }
     } else {
-      map.setView([-9.9306, -76.2422], 12); // Vista por defecto
+      map.setView([-9.9306, -76.2422], 10); // Vista por defecto
     }
   }, []);
 
@@ -120,6 +118,7 @@ export const MapaPage = () => {
   const [searchTerm, setSearchTerm] = useState("");
   const [showTable, setShowTable] = useState(true);
   const [vehiculos, setVehiculos] = useState([]);
+  const [marcadores, setMarcadores] = useState([]);
   const [filteredVehiculos, setFilteredVehiculos] = useState([]);
   const [vehiculoActual, setVehiculoActual] = useState(null);
   const [statusFilter, setStatusFilter] = useState(null);
@@ -130,13 +129,13 @@ export const MapaPage = () => {
 
   const isMd = useMediaQuery((theme) => theme.breakpoints.up("md"));
   const { BaseLayer } = LayersControl;
-  const { devices } = useContext(WebSocketContext);
+  const { devices, positions } = useContext(WebSocketContext);
 
   // Inicialización
   useEffect(() => {
     const initializeMap = async () => {
       try {
-        await Promise.all([getGrupos(), getGeofences()]);
+        await Promise.all([getVehiculos(), getGrupos(), getGeofences()]);
       } catch (error) {
         console.error("Error initializing map:", error);
       }
@@ -146,12 +145,15 @@ export const MapaPage = () => {
 
   // Actualización de dispositivos (sin throttling para evitar lag)
   useEffect(() => {
-    if (devices === null || devices === undefined) {
-      setVehiculos([]);
-      return;
+    if (devices.length > 0) {
+      actualizarVehiculos(devices);
     }
-    setVehiculos(devices);
   }, [devices]);
+  useEffect(() => {
+    if (positions.length > 0) {
+      actualizarMarcadores(positions);
+    }
+  }, [positions]);
 
   // Filtrado de vehículos
   useEffect(() => {
@@ -195,6 +197,44 @@ export const MapaPage = () => {
   const handleToggleFilters = useCallback(() => {
     setShowFilters(!showFilters);
   }, [showFilters]);
+
+  const actualizarMarcadores = (nuevosDatos) => {
+    setMarcadores((prevMarcadores) => {
+      const marcadoresMap = new Map();
+
+      // Agregar marcadores existentes al Map
+      prevMarcadores.forEach((marcador) => {
+        marcadoresMap.set(marcador.deviceId, marcador);
+      });
+
+      // Sobrescribir/agregar nuevos datos
+      nuevosDatos.forEach((marcador) => {
+        marcadoresMap.set(marcador.deviceId, marcador);
+      });
+
+      // Convertir Map de vuelta a array
+      return Array.from(marcadoresMap.values());
+    });
+  };
+
+  const actualizarVehiculos = (nuevosDatos) => {
+    setVehiculos((prevVehiculos) => {
+      const vehiculosMap = new Map();
+
+      // Agregar vehículos existentes al Map
+      prevVehiculos.forEach((vehiculo) => {
+        vehiculosMap.set(vehiculo.id, vehiculo);
+      });
+
+      // Sobrescribir/agregar nuevos datos
+      nuevosDatos.forEach((vehiculo) => {
+        vehiculosMap.set(vehiculo.id, vehiculo);
+      });
+
+      // Convertir Map de vuelta a array
+      return Array.from(vehiculosMap.values());
+    });
+  };
 
   const definirColorDeEstado = useCallback((estado) => {
     switch (estado) {
@@ -303,6 +343,15 @@ export const MapaPage = () => {
     return null;
   }
 
+  async function getVehiculos() {
+    try {
+      const result = await getTraccar("devices");
+      setVehiculos(result.data);
+    } catch (error) {
+      console.log("error: " + error);
+    }
+  }
+
   async function getGrupos() {
     try {
       const result = await getTraccar("groups");
@@ -344,9 +393,6 @@ export const MapaPage = () => {
   }, [vehiculos]);
 
   const statusCounts = getStatusCounts();
-  const selectedVehicle = vehiculoActual
-    ? vehiculos.find((v) => v.id === vehiculoActual)
-    : null;
 
   return (
     <Box sx={{ height: "100%" }}>
@@ -466,8 +512,8 @@ export const MapaPage = () => {
                       <TableBody>
                         {filteredVehiculos.map((row) => {
                           const tieneCoordenadas =
-                            typeof row.latitude === "number" &&
-                            typeof row.longitude === "number";
+                            marcadores?.find((m) => m.deviceId == row.id) ||
+                            false;
                           return (
                             <TableRow
                               key={row.id}
@@ -613,21 +659,24 @@ export const MapaPage = () => {
 
               <MapController
                 vehiculoActual={vehiculoActual}
-                vehicles={vehiculos}
+                marcadores={marcadores}
               />
 
               {/* Renderizado DIRECTO de vehículos - Como Traccar */}
-              {filteredVehiculos
+              {marcadores
                 .filter(
-                  (vehiculo) =>
-                    vehiculo.latitude &&
-                    vehiculo.longitude &&
-                    !isNaN(vehiculo.latitude) &&
-                    !isNaN(vehiculo.longitude)
+                  (marcador) =>
+                    marcador.latitude &&
+                    marcador.longitude &&
+                    !isNaN(marcador.latitude) &&
+                    !isNaN(marcador.longitude)
                 )
-                .map((vehiculo) => {
+                .map((marcador) => {
                   const vehicleIcon = L.icon({
-                    iconUrl: getIconUrl(vehiculo?.category),
+                    iconUrl: getIconUrl(
+                      vehiculos.find((v) => v.id === marcador.deviceId)
+                        ?.category || "car"
+                    ),
                     iconSize: [42, 48], // Tamaño del icono, puedes ajustarlo según tus necesidades
                     iconAnchor: [21, 24], // Punto del icono que corresponderá a la ubicación del marcador
                     popupAnchor: [0, -12], // Punto desde el cual se abrirá el popup en relación con iconAnchor
@@ -635,15 +684,17 @@ export const MapaPage = () => {
 
                   return (
                     <RotatedMarker
-                      key={vehiculo.id}
-                      title={vehiculo.name}
-                      position={[vehiculo.latitude, vehiculo.longitude]}
+                      key={marcador.id}
+                      title={
+                        vehiculos.find(v => v.id == marcador.deviceId)?.name || "Sin nombre"
+                      }
+                      position={[marcador.latitude, marcador.longitude]}
                       icon={vehicleIcon}
                       eventHandlers={{
-                        click: () => handleVehicleClick(vehiculo.id),
+                        click: () => handleVehicleClick(marcador.deviceId),
                       }}
                       rotationOrigin="center center"
-                      rotationAngle={(vehiculo.course || 0) + 90}
+                      rotationAngle={(marcador.course || 0) + 90}
                     />
                   );
                 })}
@@ -696,25 +747,20 @@ export const MapaPage = () => {
               })}
 
               {/* Círculo del vehículo seleccionado - SIN key cambiante */}
-              {selectedVehicle &&
-                selectedVehicle.latitude &&
-                selectedVehicle.longitude && (
-                  <LeafletCircle
-                    center={[
-                      selectedVehicle.latitude,
-                      selectedVehicle.longitude,
-                    ]}
-                    radius={30}
-                    pathOptions={{
-                      color: "rgba(0, 128, 0, 0.0)",
-                      fillColor: "rgba(141, 36, 170, 1)",
-                      fillOpacity: 0.2,
-                    }}
-                  />
-                )}
+              {vehiculoActual && (
+                <LeafletCircle
+                  center={[marcadores?.find(m => m.deviceId === vehiculoActual)?.latitude, marcadores?.find(m => m.deviceId === vehiculoActual)?.longitude]}
+                  radius={30}
+                  pathOptions={{
+                    color: "rgba(0, 128, 0, 0.0)",
+                    fillColor: "rgba(141, 36, 170, 1)",
+                    fillOpacity: 0.2,
+                  }}
+                />
+              )}
 
               {/* Panel de vehículo seleccionado */}
-              {selectedVehicle && (
+              {vehiculoActual && (
                 <Paper
                   sx={{
                     position: "absolute",
@@ -743,7 +789,7 @@ export const MapaPage = () => {
                           color: "primary.main",
                         }}
                       >
-                        {selectedVehicle.name || "-"}
+                        {vehiculos.find(v => v.id === vehiculoActual).name || "-"}
                       </Typography>
                       <Grid container spacing={isMd ? 1 : 0} sx={{ margin: 0 }}>
                         <Grid item xs={12} md={6}>
@@ -759,7 +805,7 @@ export const MapaPage = () => {
                               Velocidad:
                             </Typography>
                             <Typography variant={"caption"}>
-                              {Number(selectedVehicle.speed || 0).toFixed(2)}{" "}
+                              {Number(marcadores?.find(m => m.deviceId === vehiculoActual)?.speed || 0).toFixed(2)}{" "}
                               Km/h
                             </Typography>
                           </Stack>
@@ -780,13 +826,13 @@ export const MapaPage = () => {
                               variant={"caption"}
                               sx={{
                                 color: definirColorDeEstado(
-                                  selectedVehicle.status
+                                  vehiculos.find(v => v.id === vehiculoActual).status
                                 ),
                               }}
                             >
-                              {selectedVehicle.status === "online"
+                              {vehiculos.find(v => v.id === vehiculoActual).status === "online"
                                 ? "En linea"
-                                : getTimeAgo(selectedVehicle.lastUpdate) ||
+                                : getTimeAgo(vehiculos.find(v => v.id === vehiculoActual).lastUpdate) ||
                                   "Desconocido"}
                             </Typography>
                           </Stack>
@@ -807,7 +853,7 @@ export const MapaPage = () => {
                                 </Typography>
                                 <Typography variant={"caption"}>
                                   {Number(
-                                    selectedVehicle.attributes?.totalDistance ||
+                                    marcadores?.find(m => m.deviceId === vehiculoActual)?.attributes?.totalDistance ||
                                       0
                                   ).toFixed(2)}{" "}
                                   km
@@ -827,7 +873,7 @@ export const MapaPage = () => {
                                   Bateria:
                                 </Typography>
                                 <Typography variant={"caption"}>
-                                  {selectedVehicle.attributes?.batteryLevel ||
+                                  {marcadores?.find(m => m.deviceId === vehiculoActual)?.attributes?.batteryLevel ||
                                     "100"}{" "}
                                   %
                                 </Typography>
@@ -856,7 +902,7 @@ export const MapaPage = () => {
                                       alignItems: "center",
                                       justifyContent: "center",
                                       transform: `rotate(${
-                                        (selectedVehicle.course || 0) + 90
+                                        (marcadores?.find(m => m.deviceId === vehiculoActual)?.course || 0) + 90
                                       }deg)`,
                                     }}
                                   >
@@ -887,7 +933,7 @@ export const MapaPage = () => {
                                   >
                                     <IconEngineFilled
                                       color={
-                                        selectedVehicle.attributes?.ignition
+                                        marcadores?.find(m => m.deviceId === vehiculoActual)?.attributes?.ignition
                                           ? "green"
                                           : "red"
                                       }
@@ -911,7 +957,7 @@ export const MapaPage = () => {
                                 </Typography>
                                 <Typography variant={"caption"}>
                                   {restarCincoHoras(
-                                    selectedVehicle.lastUpdate || ""
+                                    vehiculos.find(v => v.id === vehiculoActual).lastUpdate || ""
                                   )}
                                 </Typography>
                               </Stack>
@@ -920,9 +966,9 @@ export const MapaPage = () => {
                         )}
                       </Grid>
                       <GoogleStreetView
-                        latitude={selectedVehicle.latitude || 0}
-                        longitude={selectedVehicle.longitude || 0}
-                        heading={selectedVehicle.course || 0}
+                        latitude={marcadores?.find(m => m.deviceId === vehiculoActual)?.latitude || 0}
+                        longitude={marcadores?.find(m => m.deviceId === vehiculoActual)?.longitude || 0}
+                        heading={marcadores?.find(m => m.deviceId === vehiculoActual)?.course || 0}
                       />
                     </>
                   </Stack>

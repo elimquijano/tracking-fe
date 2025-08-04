@@ -23,6 +23,7 @@ export const WebSocketContext = createContext();
 export const WebSocketProvider = ({ children }) => {
   const [ws, setWs] = useState(null);
   const [devices, setDevices] = useState([]);
+  const [positions, setPositions] = useState([]);
   const [event, setEvent] = useState(null);
   const [showAlert, setShowAlert] = useState(false);
   const [alertMessage, setAlertMessage] = useState("");
@@ -98,7 +99,12 @@ export const WebSocketProvider = ({ children }) => {
         const data = JSON.parse(event.data);
         if (data.devices) {
           setDevices((prevDevices) =>
-            mergeDeviceUpdates(prevDevices, data.devices)
+            [...prevDevices, ...data.devices]
+          );
+        }
+        if (data.positions) {
+          setPositions((prevPositions) =>
+            [...prevPositions, ...data.positions]
           );
         }
         if (data.event) {
@@ -322,6 +328,7 @@ export const WebSocketProvider = ({ children }) => {
       value={{
         ws,
         devices,
+        positions,
         event,
         showAlert,
         alertMessage,

@@ -54,11 +54,11 @@ export const IconCircle = ({ icon, color = 'primary' }) => {
   const getColors = () => {
     switch (color) {
       case 'primary':
-        return { background: theme.palette.primary.light, textColor: theme.palette.primary.main };
+        return { background: theme.palette.primary.light, textColor: theme.palette.primary.contrastText };
       case 'secondary':
-        return { background: theme.palette.secondary.light, textColor: theme.palette.secondary.main };
+        return { background: theme.palette.secondary.light, textColor: theme.palette.secondary.contrastText };
       default:
-        return { background: theme.palette.primary.light, textColor: theme.palette.primary.main };
+        return { background: theme.palette.primary.light, textColor: theme.palette.primary.contrastText };
     }
   };
 
