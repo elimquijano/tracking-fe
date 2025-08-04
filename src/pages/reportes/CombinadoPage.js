@@ -319,12 +319,11 @@ export default function CombinadoPage() {
         center={centerMap}
         zoom={zoomMap}
         zoomControl={false}
-        style={{ height: 200, width: "100%" }}
+        style={{ height: 300, width: "100%" }}
       >
         <TileLayer
-          url="http://{s}.google.com/vt/lyrs=m&x={x}&y={y}&z={z}"
-          subdomains={["mt0", "mt1", "mt2", "mt3"]}
-          maxZoom={20}
+          url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+          attribution='© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
         />
         <ZoomControl position="bottomleft" />
         <Polyline positions={routes} color="blue" />
@@ -336,7 +335,7 @@ export default function CombinadoPage() {
           />
         ))}
       </MapContainer>
-      <Grid container spacing={2}>
+      <Grid container spacing={2} sx={{ mt: 2 }}>
         <Grid item xs={12} md={9}>
           <Grid container spacing={2}>
             <Grid item xs={6} md={4}>

@@ -32,12 +32,12 @@ import {
 import {
   ArrowBack,
   Circle,
+  Close,
   ExpandLess,
   ExpandMore,
   Tune,
 } from "@mui/icons-material";
 import { Circle as LeafletCircle } from "react-leaflet";
-import GoogleStreetView from "../components/StreetView";
 import { WebSocketContext } from "../contexts/SocketContext";
 import { IconCircle } from "../components/iconCircle";
 import { getTraccar } from "../utils/common";
@@ -80,7 +80,7 @@ const MapController = ({ vehiculoActual, marcadores }) => {
 
   useEffect(() => {
     if (vehiculoActual) {
-      const marcador = marcadores?.find(m => m.deviceId === vehiculoActual);
+      const marcador = marcadores?.find((m) => m.deviceId === vehiculoActual);
       if (marcador?.latitude && marcador?.longitude) {
         map.setView([marcador.latitude, marcador.longitude], 17);
       }
@@ -89,7 +89,7 @@ const MapController = ({ vehiculoActual, marcadores }) => {
 
   useEffect(() => {
     if (vehiculoActual) {
-      const marcador = marcadores?.find(m => m.deviceId === vehiculoActual);
+      const marcador = marcadores?.find((m) => m.deviceId === vehiculoActual);
       if (marcador?.latitude && marcador?.longitude) {
         map.flyTo([marcador.latitude, marcador.longitude], 17);
       }
@@ -686,7 +686,8 @@ export const MapaPage = () => {
                     <RotatedMarker
                       key={marcador.id}
                       title={
-                        vehiculos.find(v => v.id == marcador.deviceId)?.name || "Sin nombre"
+                        vehiculos.find((v) => v.id == marcador.deviceId)
+                          ?.name || "Sin nombre"
                       }
                       position={[marcador.latitude, marcador.longitude]}
                       icon={vehicleIcon}
@@ -749,7 +750,12 @@ export const MapaPage = () => {
               {/* Círculo del vehículo seleccionado - SIN key cambiante */}
               {vehiculoActual && (
                 <LeafletCircle
-                  center={[marcadores?.find(m => m.deviceId === vehiculoActual)?.latitude, marcadores?.find(m => m.deviceId === vehiculoActual)?.longitude]}
+                  center={[
+                    marcadores?.find((m) => m.deviceId === vehiculoActual)
+                      ?.latitude,
+                    marcadores?.find((m) => m.deviceId === vehiculoActual)
+                      ?.longitude,
+                  ]}
                   radius={30}
                   pathOptions={{
                     color: "rgba(0, 128, 0, 0.0)",
@@ -773,24 +779,27 @@ export const MapaPage = () => {
                   }}
                 >
                   <Stack direction={"column"} style={{ position: "relative" }}>
-                    <Button
-                      color="primary"
-                      fullWidth
-                      onClick={() => setVehiculoActual(null)}
-                    >
-                      <ExpandMore fontSize={isMd ? "medium" : "small"} />
-                    </Button>
-                    <>
+                    <Stack direction={"row"} justifyContent={"space-between"}>
                       <Typography
                         variant={isMd ? "h4" : "h5"}
                         sx={{
+                          padding: 2,
                           fontWeight: "bold",
                           textAlign: "center",
                           color: "primary.main",
                         }}
                       >
-                        {vehiculos.find(v => v.id === vehiculoActual).name || "-"}
+                        {vehiculos.find((v) => v.id === vehiculoActual).name ||
+                          "-"}
                       </Typography>
+                      <Button
+                        color="primary"
+                        onClick={() => setVehiculoActual(null)}
+                      >
+                        <Close fontSize={isMd ? "medium" : "small"} />
+                      </Button>
+                    </Stack>
+                    <>
                       <Grid container spacing={isMd ? 1 : 0} sx={{ margin: 0 }}>
                         <Grid item xs={12} md={6}>
                           <Stack
@@ -805,7 +814,11 @@ export const MapaPage = () => {
                               Velocidad:
                             </Typography>
                             <Typography variant={"caption"}>
-                              {Number(marcadores?.find(m => m.deviceId === vehiculoActual)?.speed || 0).toFixed(2)}{" "}
+                              {Number(
+                                marcadores?.find(
+                                  (m) => m.deviceId === vehiculoActual
+                                )?.speed || 0
+                              ).toFixed(2)}{" "}
                               Km/h
                             </Typography>
                           </Stack>
@@ -826,14 +839,19 @@ export const MapaPage = () => {
                               variant={"caption"}
                               sx={{
                                 color: definirColorDeEstado(
-                                  vehiculos.find(v => v.id === vehiculoActual).status
+                                  vehiculos.find((v) => v.id === vehiculoActual)
+                                    .status
                                 ),
                               }}
                             >
-                              {vehiculos.find(v => v.id === vehiculoActual).status === "online"
+                              {vehiculos.find((v) => v.id === vehiculoActual)
+                                .status === "online"
                                 ? "En linea"
-                                : getTimeAgo(vehiculos.find(v => v.id === vehiculoActual).lastUpdate) ||
-                                  "Desconocido"}
+                                : getTimeAgo(
+                                    vehiculos.find(
+                                      (v) => v.id === vehiculoActual
+                                    ).lastUpdate
+                                  ) || "Desconocido"}
                             </Typography>
                           </Stack>
                         </Grid>
@@ -853,8 +871,9 @@ export const MapaPage = () => {
                                 </Typography>
                                 <Typography variant={"caption"}>
                                   {Number(
-                                    marcadores?.find(m => m.deviceId === vehiculoActual)?.attributes?.totalDistance ||
-                                      0
+                                    marcadores?.find(
+                                      (m) => m.deviceId === vehiculoActual
+                                    )?.attributes?.totalDistance || 0
                                   ).toFixed(2)}{" "}
                                   km
                                 </Typography>
@@ -873,8 +892,9 @@ export const MapaPage = () => {
                                   Bateria:
                                 </Typography>
                                 <Typography variant={"caption"}>
-                                  {marcadores?.find(m => m.deviceId === vehiculoActual)?.attributes?.batteryLevel ||
-                                    "100"}{" "}
+                                  {marcadores?.find(
+                                    (m) => m.deviceId === vehiculoActual
+                                  )?.attributes?.batteryLevel || "100"}{" "}
                                   %
                                 </Typography>
                               </Stack>
@@ -902,7 +922,9 @@ export const MapaPage = () => {
                                       alignItems: "center",
                                       justifyContent: "center",
                                       transform: `rotate(${
-                                        (marcadores?.find(m => m.deviceId === vehiculoActual)?.course || 0) + 90
+                                        (marcadores?.find(
+                                          (m) => m.deviceId === vehiculoActual
+                                        )?.course || 0) + 90
                                       }deg)`,
                                     }}
                                   >
@@ -933,7 +955,9 @@ export const MapaPage = () => {
                                   >
                                     <IconEngineFilled
                                       color={
-                                        marcadores?.find(m => m.deviceId === vehiculoActual)?.attributes?.ignition
+                                        marcadores?.find(
+                                          (m) => m.deviceId === vehiculoActual
+                                        )?.attributes?.ignition
                                           ? "green"
                                           : "red"
                                       }
@@ -957,7 +981,9 @@ export const MapaPage = () => {
                                 </Typography>
                                 <Typography variant={"caption"}>
                                   {restarCincoHoras(
-                                    vehiculos.find(v => v.id === vehiculoActual).lastUpdate || ""
+                                    vehiculos.find(
+                                      (v) => v.id === vehiculoActual
+                                    ).lastUpdate || ""
                                   )}
                                 </Typography>
                               </Stack>
@@ -965,11 +991,6 @@ export const MapaPage = () => {
                           </>
                         )}
                       </Grid>
-                      <GoogleStreetView
-                        latitude={marcadores?.find(m => m.deviceId === vehiculoActual)?.latitude || 0}
-                        longitude={marcadores?.find(m => m.deviceId === vehiculoActual)?.longitude || 0}
-                        heading={marcadores?.find(m => m.deviceId === vehiculoActual)?.course || 0}
-                      />
                     </>
                   </Stack>
                 </Paper>

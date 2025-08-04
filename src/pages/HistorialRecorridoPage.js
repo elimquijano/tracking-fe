@@ -10,8 +10,6 @@ import {
   Polygon,
   Tooltip,
   ZoomControl,
-  Marker,
-  CircleMarker,
 } from "react-leaflet";
 import {
   Paper,
@@ -44,6 +42,7 @@ import { columnsTPositionsList } from "../utils/ExportColumns";
 import RotatedMarker from "../components/RotatedMarker";
 import { theme } from "../theme/theme";
 import { exportToExcel } from "../utils/exportToExcel";
+import { useParams } from "react-router-dom";
 
 const getIconUrl = (category) => {
   switch (category) {
@@ -67,6 +66,7 @@ const getIconUrl = (category) => {
 };
 
 export const HistorialDeRecorridoPage = () => {
+  const { id } = useParams();
   const [filteredRows, setFilteredRows] = useState([]);
   const [searchFilter, setSearchFilter] = useState({
     date_filter: "today",
@@ -118,6 +118,18 @@ export const HistorialDeRecorridoPage = () => {
     fetchVehiculos();
     fetchGeocercas();
   }, []);
+
+  useEffect(() => {
+    if (id) {
+      const vehiculo = vehiculos.find((v) => v.id === parseInt(id));
+      if (vehiculo) {
+        setSearchFilter((prev) => ({
+          ...prev,
+          deviceid: vehiculo.id,
+        }));
+      }
+    }
+  }, [id, vehiculos]);
 
   useEffect(() => {
     let intervalId = null;
