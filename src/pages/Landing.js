@@ -44,28 +44,12 @@ const getIconUrl = (category) => {
 };
 
 // Componente simple para controlar el mapa
-const MapController = ({ vehiculoActual, marcadores, setVehiculoActual }) => {
-  console.log("Marcadores:", marcadores, "Vehiculo Actual:", vehiculoActual);
+const MapController = ({ vehiculoActual, marcadores }) => {
   const map = useMap();
 
   useEffect(() => {
-    const handleClick = (e) => {
-      // Si el clic no es en un marcador, deselecciona el vehículo
-      if (e.originalEvent.target.classList.contains("leaflet-container")) {
-        setVehiculoActual(null);
-      }
-    };
-
-    map.on("click", handleClick);
-
-    return () => {
-      map.off("click", handleClick);
-    };
-  }, [map, setVehiculoActual]);
-
-  useEffect(() => {
     if (vehiculoActual) {
-      const marcador = marcadores?.find((m) => m.id === vehiculoActual);
+      const marcador = marcadores?.find((m) => m.id == vehiculoActual);
       if (marcador?.latitude && marcador?.longitude) {
         map.setView([marcador.latitude, marcador.longitude], 17);
       }
@@ -74,7 +58,7 @@ const MapController = ({ vehiculoActual, marcadores, setVehiculoActual }) => {
 
   useEffect(() => {
     if (vehiculoActual) {
-      const marcador = marcadores?.find((m) => m.id === vehiculoActual);
+      const marcador = marcadores?.find((m) => m.id == vehiculoActual);
       if (marcador?.latitude && marcador?.longitude) {
         map.flyTo([marcador.latitude, marcador.longitude], 17);
       }
@@ -119,8 +103,8 @@ export const Landing = () => {
       wsRef.current.onerror = null;
 
       if (
-        wsRef.current.readyState === WebSocket.OPEN ||
-        wsRef.current.readyState === WebSocket.CONNECTING
+        wsRef.current.readyState == WebSocket.OPEN ||
+        wsRef.current.readyState == WebSocket.CONNECTING
       ) {
         wsRef.current.close();
       }
@@ -191,7 +175,6 @@ export const Landing = () => {
 
     // Cleanup function
     return () => {
-      console.log("Limpiando componente Map");
       cleanupWebSocket();
     };
   }, [location.search]); // Only re-run if the URL search params change
@@ -200,7 +183,7 @@ export const Landing = () => {
   const handleCloseError = () => {};
 
   const getTimeAgo = useCallback((fechaString) => {
-    if (fechaString === null) return "Fuera de linea";
+    if (fechaString == null) return "Fuera de linea";
 
     const fechaPasada = new Date(fechaString);
     if (isNaN(fechaPasada.getTime())) return "Fecha inválida";
@@ -298,7 +281,7 @@ export const Landing = () => {
           height: isDesktopOrTablet ? "100%" : "50%",
         }}
       >
-        {loadingState === "connected" && (
+        {loadingState == "connected" && (
           <Box sx={{ height: "100%", width: "100%", position: "relative" }}>
             <MapContainer
               style={{ width: "100%", height: "100%" }}
@@ -314,7 +297,6 @@ export const Landing = () => {
               <MapController
                 vehiculoActual={vehiculoActual}
                 marcadores={devices}
-                setVehiculoActual={setVehiculoActual}
               />
               {devices.map((device) => {
                 const vehicleIcon = L.icon({
@@ -338,13 +320,15 @@ export const Landing = () => {
               {vehiculoActual && (
                 <LeafletCircle
                   center={[
-                    devices?.find((m) => m.id === vehiculoActual)?.latitude,
-                    devices?.find((m) => m.id === vehiculoActual)?.longitude,
+                    devices?.find((m) => m.id == vehiculoActual)?.latitude ||
+                      0,
+                    devices?.find((m) => m.id == vehiculoActual)?.longitude ||
+                      0,
                   ]}
                   radius={500}
                   pathOptions={{
                     color: "rgba(0, 128, 0, 0.0)",
-                    fillColor: "rgba(170, 150, 36, 1)",
+                    fillColor: "rgba(141, 36, 170, 1)",
                     fillOpacity: 0.2,
                   }}
                 />
@@ -355,7 +339,7 @@ export const Landing = () => {
               <Box
                 sx={{
                   position: "absolute",
-                  bottom: 5,
+                  bottom: 20,
                   width: "100%",
                   display: "flex",
                   justifyContent: "center",
@@ -395,16 +379,10 @@ export const Landing = () => {
                             padding: 1,
                           }}
                         >
-                          {devices.find((v) => v.id === vehiculoActual)?.name ||
+                          {devices.find((v) => v.id == vehiculoActual)?.name ||
                             "-"}
                         </Typography>
-                        <Button
-                          color="primary"
-                          onClick={() => setVehiculoActual(null)}
-                          sx={{ minWidth: "auto", zIndex: 1001 }}
-                        >
-                          <Close fontSize={isMd ? "medium" : "small"} />
-                        </Button>
+                        <></>
                       </Stack>
                       <Box sx={{ padding: 1 }}>
                         <Grid container spacing={isMd ? 1 : 0}>
@@ -422,7 +400,7 @@ export const Landing = () => {
                               </Typography>
                               <Typography variant={"caption"}>
                                 {Number(
-                                  devices?.find((m) => m.id === vehiculoActual)
+                                  devices?.find((m) => m.id == vehiculoActual)
                                     ?.speed || 0
                                 ).toFixed(2)}{" "}
                                 Km/h
@@ -445,17 +423,17 @@ export const Landing = () => {
                                 variant={"caption"}
                                 sx={{
                                   color: definirColorDeEstado(
-                                    devices.find((v) => v.id === vehiculoActual)
+                                    devices.find((v) => v.id == vehiculoActual)
                                       ?.status
                                   ),
                                 }}
                               >
-                                {devices.find((v) => v.id === vehiculoActual)
-                                  ?.status === "online"
+                                {devices.find((v) => v.id == vehiculoActual)
+                                  ?.status == "online"
                                   ? "En linea"
                                   : getTimeAgo(
                                       devices.find(
-                                        (v) => v.id === vehiculoActual
+                                        (v) => v.id == vehiculoActual
                                       )?.lastUpdate
                                     ) || "Desconocido"}
                               </Typography>
@@ -474,7 +452,7 @@ export const Landing = () => {
                                 Bateria:
                               </Typography>
                               <Typography variant={"caption"}>
-                                {devices?.find((m) => m.id === vehiculoActual)
+                                {devices?.find((m) => m.id == vehiculoActual)
                                   ?.attributes?.batteryLevel || "100"}{" "}
                                 %
                               </Typography>
@@ -494,7 +472,7 @@ export const Landing = () => {
                               </Typography>
                               <Typography variant={"caption"}>
                                 {Number(
-                                  devices?.find((m) => m.id === vehiculoActual)
+                                  devices?.find((m) => m.id == vehiculoActual)
                                     ?.attributes?.totalDistance || 0
                                 ).toFixed(2)}{" "}
                                 km
@@ -524,7 +502,7 @@ export const Landing = () => {
                                     justifyContent: "center",
                                     transform: `rotate(${
                                       (devices?.find(
-                                        (m) => m.id === vehiculoActual
+                                        (m) => m.id == vehiculoActual
                                       )?.course || 0) + 90
                                     }deg)`,
                                   }}
@@ -557,7 +535,7 @@ export const Landing = () => {
                                   <IconEngineFilled
                                     color={
                                       devices?.find(
-                                        (m) => m.id === vehiculoActual
+                                        (m) => m.id == vehiculoActual
                                       )?.attributes?.ignition
                                         ? "green"
                                         : "red"
@@ -582,7 +560,7 @@ export const Landing = () => {
                               </Typography>
                               <Typography variant={"caption"}>
                                 {restarCincoHoras(
-                                  devices.find((v) => v.id === vehiculoActual)
+                                  devices.find((v) => v.id == vehiculoActual)
                                     ?.lastUpdate || ""
                                 )}
                               </Typography>
@@ -623,7 +601,7 @@ export const Landing = () => {
       {/* Error overlay with semi-transparent backdrop */}
       <Backdrop
         sx={{ color: "#fff", zIndex: 1000 }}
-        open={loadingState === "error"}
+        open={loadingState == "error"}
         onClick={handleCloseError}
       >
         <Box
