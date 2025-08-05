@@ -471,7 +471,7 @@ export const MapaPage = () => {
           .then((response) => response.json())
           .then((result) => {
             const { token } = result;
-            const link = `${window.location.origin}/?t=${token}`;
+            const link = `${window.location.origin}/?t=${token}&d=${vehiculoActual}`;
             notificationSwal("Éxito", "Ubicación compartida con éxito.", "success");
             window.open(link, "_blank");
           })

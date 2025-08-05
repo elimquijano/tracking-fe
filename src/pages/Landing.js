@@ -1,5 +1,5 @@
-import React, { useEffect, useState, useRef } from "react";
-import { MapContainer, TileLayer, useMap } from "react-leaflet";
+import React, { useEffect, useState, useRef, useCallback } from "react";
+import { MapContainer, TileLayer, useMap, ZoomControl } from "react-leaflet";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
 import { useLocation, useNavigate } from "react-router-dom";
@@ -9,11 +9,18 @@ import {
   Snackbar,
   Backdrop,
   useMediaQuery,
-  useTheme,
+  Paper,
   Button,
+  Stack,
+  Grid,
 } from "@mui/material";
 import { WSS_INTERCEPTOR } from "../utils/common";
 import RotatedMarker from "../components/RotatedMarker";
+import Draggable from "react-draggable";
+import { ArrowBack, Close } from "@mui/icons-material";
+import { theme } from "../theme/theme";
+import { IconEngineFilled } from "@tabler/icons-react";
+import { Circle as LeafletCircle } from "react-leaflet";
 
 const getIconUrl = (category) => {
   switch (category) {
@@ -36,22 +43,56 @@ const getIconUrl = (category) => {
   }
 };
 
-// Component to handle map view animation
-const MapViewHandler = ({ devices }) => {
+// Componente simple para controlar el mapa
+const MapController = ({ vehiculoActual, marcadores, setVehiculoActual }) => {
+  console.log("Marcadores:", marcadores, "Vehiculo Actual:", vehiculoActual);
   const map = useMap();
-  const initialized = useRef(false);
 
   useEffect(() => {
-    if (devices.length > 0 && !initialized.current) {
-      const points = devices.map((device) => [
-        device.latitude,
-        device.longitude,
-      ]);
-      const bounds = L.latLngBounds(points);
-      map.fitBounds(bounds, { padding: [50, 50], animate: true });
-      initialized.current = true;
+    const handleClick = (e) => {
+      // Si el clic no es en un marcador, deselecciona el vehículo
+      if (e.originalEvent.target.classList.contains("leaflet-container")) {
+        setVehiculoActual(null);
+      }
+    };
+
+    map.on("click", handleClick);
+
+    return () => {
+      map.off("click", handleClick);
+    };
+  }, [map, setVehiculoActual]);
+
+  useEffect(() => {
+    if (vehiculoActual) {
+      const marcador = marcadores?.find((m) => m.id === vehiculoActual);
+      if (marcador?.latitude && marcador?.longitude) {
+        map.setView([marcador.latitude, marcador.longitude], 17);
+      }
     }
-  }, [devices, map]);
+  }, [marcadores, map]);
+
+  useEffect(() => {
+    if (vehiculoActual) {
+      const marcador = marcadores?.find((m) => m.id === vehiculoActual);
+      if (marcador?.latitude && marcador?.longitude) {
+        map.flyTo([marcador.latitude, marcador.longitude], 17);
+      }
+    } else {
+      map.flyTo([-9.9306, -76.2422], 10); // Vista por defecto
+    }
+  }, [vehiculoActual, map]);
+
+  useEffect(() => {
+    if (marcadores?.length > 0) {
+      const firstVehicle = marcadores[0];
+      if (firstVehicle?.latitude && firstVehicle?.longitude) {
+        map.setView([firstVehicle.latitude, firstVehicle.longitude], 10);
+      }
+    } else {
+      map.setView([-9.9306, -76.2422], 10); // Vista por defecto
+    }
+  }, []);
 
   return null;
 };
@@ -61,12 +102,13 @@ export const Landing = () => {
   const [devices, setDevices] = useState([]);
   const [errorMessage, setErrorMessage] = useState("");
   const [loadingState, setLoadingState] = useState("connecting"); // connecting, connected, error
+  const [vehiculoActual, setVehiculoActual] = useState(null);
   const wsRef = useRef(null);
 
   // Use theme and media query for responsive layout
-  const theme = useTheme();
   const navigate = useNavigate();
   const isDesktopOrTablet = useMediaQuery(theme.breakpoints.up("sm"));
+  const isMd = useMediaQuery((theme) => theme.breakpoints.up("md"));
 
   // Clean up function for websocket
   const cleanupWebSocket = () => {
@@ -88,17 +130,20 @@ export const Landing = () => {
 
   useEffect(() => {
     const params = new URLSearchParams(location.search);
-    const t = params.get("t");
+    const token = params.get("t");
+    const deviceId = params.get("d");
 
-    if (!t) {
+    if (!token || !deviceId) {
       setErrorMessage(
-        'La URL no contiene el parámetro "t" con el token de acceso.'
+        'La URL no contiene los parámetros "t" con el token de acceso y "d" con el ID del dispositivo.'
       );
       setLoadingState("error");
       return;
     }
 
-    const wsUrl = `${WSS_INTERCEPTOR}guest?t=${t}`;
+    setVehiculoActual(deviceId);
+
+    const wsUrl = `${WSS_INTERCEPTOR}guest?t=${token}`;
 
     setLoadingState("connecting");
     console.log("Intentando conectar al WebSocket...");
@@ -154,6 +199,85 @@ export const Landing = () => {
   // Handle error message dismissal
   const handleCloseError = () => {};
 
+  const getTimeAgo = useCallback((fechaString) => {
+    if (fechaString === null) return "Fuera de linea";
+
+    const fechaPasada = new Date(fechaString);
+    if (isNaN(fechaPasada.getTime())) return "Fecha inválida";
+
+    const ahoraOriginal = new Date();
+    const ahora = new Date(ahoraOriginal.getTime() + 5 * 60 * 60 * 1000);
+    const diffMs = ahora.getTime() - fechaPasada.getTime();
+
+    if (diffMs < 0) return "Fecha en el futuro";
+
+    const SEGUNDO = 1000,
+      MINUTO = SEGUNDO * 60,
+      HORA = MINUTO * 60,
+      DIA = HORA * 24;
+    const MES = DIA * 30.44,
+      ANO = DIA * 365.25;
+
+    const diffYears = Math.round(diffMs / ANO);
+    if (diffYears >= 1)
+      return `Hace ${diffYears} año${diffYears > 1 ? "s" : ""}`;
+
+    const diffMonths = Math.round(diffMs / MES);
+    if (diffMonths >= 1)
+      return `Hace ${diffMonths} mes${diffMonths > 1 ? "es" : ""}`;
+
+    const diffDays = Math.round(diffMs / DIA);
+    if (diffDays >= 1) return `Hace ${diffDays} día${diffDays > 1 ? "s" : ""}`;
+
+    const diffHours = Math.round(diffMs / HORA);
+    if (diffHours >= 1)
+      return `Hace ${diffHours} hora${diffHours > 1 ? "s" : ""}`;
+
+    const diffMinutes = Math.round(diffMs / MINUTO);
+    if (diffMinutes >= 1)
+      return `Hace ${diffMinutes} minuto${diffMinutes > 1 ? "s" : ""}`;
+
+    const diffSeconds = Math.round(diffMs / SEGUNDO);
+    if (diffSeconds >= 10)
+      return `Hace ${diffSeconds} segundo${diffSeconds > 1 ? "s" : ""}`;
+
+    return "Hace unos segundos";
+  }, []);
+
+  const restarCincoHoras = useCallback((dateString) => {
+    if (!dateString) return "Fecha no disponible";
+    try {
+      const date = new Date(dateString);
+      const formatter = new Intl.DateTimeFormat("es-PE", {
+        timeZone: "America/Lima",
+        year: "numeric",
+        month: "2-digit",
+        day: "2-digit",
+        hour: "2-digit",
+        minute: "2-digit",
+        second: "2-digit",
+        hour12: false,
+      });
+      return formatter.format(date);
+    } catch (error) {
+      console.error("Error al formatear fecha:", error);
+      return "Error en fecha";
+    }
+  }, []);
+
+  const definirColorDeEstado = useCallback((estado) => {
+    switch (estado) {
+      case "online":
+        return theme.palette.success.main;
+      case "offline":
+        return theme.palette.error.main;
+      case "unknown":
+        return theme.palette.warning.main;
+      default:
+        return theme.palette.grey.main;
+    }
+  }, []);
+
   // Styles for map and info container
   const containerStyle = {
     height: "100vh",
@@ -177,13 +301,20 @@ export const Landing = () => {
         {loadingState === "connected" && (
           <Box sx={{ height: "100%", width: "100%", position: "relative" }}>
             <MapContainer
-              center={[-9.92998, -76.2422]}
-              zoom={14}
-              style={{ height: "100%", width: "100%" }}
+              style={{ width: "100%", height: "100%" }}
+              center={[0, 0]}
+              zoom={1}
+              zoomControl={false}
             >
               <TileLayer
                 url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
                 attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+              />
+              <ZoomControl position="bottomleft" />
+              <MapController
+                vehiculoActual={vehiculoActual}
+                marcadores={devices}
+                setVehiculoActual={setVehiculoActual}
               />
               {devices.map((device) => {
                 const vehicleIcon = L.icon({
@@ -203,8 +334,267 @@ export const Landing = () => {
                   />
                 );
               })}
-              <MapViewHandler devices={devices} />
+              {/* Círculo del vehículo seleccionado - SIN key cambiante */}
+              {vehiculoActual && (
+                <LeafletCircle
+                  center={[
+                    devices?.find((m) => m.id === vehiculoActual)?.latitude,
+                    devices?.find((m) => m.id === vehiculoActual)?.longitude,
+                  ]}
+                  radius={500}
+                  pathOptions={{
+                    color: "rgba(0, 128, 0, 0.0)",
+                    fillColor: "rgba(170, 150, 36, 1)",
+                    fillOpacity: 0.2,
+                  }}
+                />
+              )}
             </MapContainer>
+            {/* Panel de vehículo seleccionado */}
+            {vehiculoActual && (
+              <Box
+                sx={{
+                  position: "absolute",
+                  bottom: 5,
+                  width: "100%",
+                  display: "flex",
+                  justifyContent: "center",
+                  zIndex: 1000,
+                  pointerEvents: "none", // Permite clics en el mapa
+                }}
+              >
+                <Draggable handle=".handle">
+                  <Paper
+                    onMouseDown={(e) => e.stopPropagation()}
+                    sx={{
+                      pointerEvents: "auto", // Reactiva eventos para el panel
+                      borderRadius: 0,
+                      width: { xs: "calc(100% - 20px)", md: "480px" },
+                      margin: 0,
+                      boxShadow: "0px 0px 15px rgba(0,0,0,0.2)",
+                    }}
+                  >
+                    <Stack
+                      direction={"column"}
+                      style={{ position: "relative" }}
+                    >
+                      <Stack
+                        className="handle"
+                        direction={"row"}
+                        justifyContent={"space-between"}
+                        alignItems={"center"}
+                        sx={{
+                          cursor: "move",
+                        }}
+                      >
+                        <Typography
+                          variant={isMd ? "h4" : "h6"}
+                          sx={{
+                            fontWeight: "bold",
+                            color: "primary.main",
+                            padding: 1,
+                          }}
+                        >
+                          {devices.find((v) => v.id === vehiculoActual)?.name ||
+                            "-"}
+                        </Typography>
+                        <Button
+                          color="primary"
+                          onClick={() => setVehiculoActual(null)}
+                          sx={{ minWidth: "auto", zIndex: 1001 }}
+                        >
+                          <Close fontSize={isMd ? "medium" : "small"} />
+                        </Button>
+                      </Stack>
+                      <Box sx={{ padding: 1 }}>
+                        <Grid container spacing={isMd ? 1 : 0}>
+                          <Grid item xs={12} md={6}>
+                            <Stack
+                              direction="row"
+                              spacing={1}
+                              alignItems={"center"}
+                            >
+                              <Typography
+                                variant={"caption"}
+                                sx={{ fontWeight: "bold" }}
+                              >
+                                Velocidad:
+                              </Typography>
+                              <Typography variant={"caption"}>
+                                {Number(
+                                  devices?.find((m) => m.id === vehiculoActual)
+                                    ?.speed || 0
+                                ).toFixed(2)}{" "}
+                                Km/h
+                              </Typography>
+                            </Stack>
+                          </Grid>
+                          <Grid item xs={6} md={6}>
+                            <Stack
+                              direction="row"
+                              spacing={1}
+                              alignItems={"center"}
+                            >
+                              <Typography
+                                variant={"caption"}
+                                sx={{ fontWeight: "bold" }}
+                              >
+                                Estado:
+                              </Typography>
+                              <Typography
+                                variant={"caption"}
+                                sx={{
+                                  color: definirColorDeEstado(
+                                    devices.find((v) => v.id === vehiculoActual)
+                                      ?.status
+                                  ),
+                                }}
+                              >
+                                {devices.find((v) => v.id === vehiculoActual)
+                                  ?.status === "online"
+                                  ? "En linea"
+                                  : getTimeAgo(
+                                      devices.find(
+                                        (v) => v.id === vehiculoActual
+                                      )?.lastUpdate
+                                    ) || "Desconocido"}
+                              </Typography>
+                            </Stack>
+                          </Grid>
+                          <Grid item xs={6} md={6}>
+                            <Stack
+                              direction="row"
+                              spacing={1}
+                              alignItems={"center"}
+                            >
+                              <Typography
+                                variant={"caption"}
+                                sx={{ fontWeight: "bold" }}
+                              >
+                                Bateria:
+                              </Typography>
+                              <Typography variant={"caption"}>
+                                {devices?.find((m) => m.id === vehiculoActual)
+                                  ?.attributes?.batteryLevel || "100"}{" "}
+                                %
+                              </Typography>
+                            </Stack>
+                          </Grid>
+                          <Grid item xs={12} md={6}>
+                            <Stack
+                              direction="row"
+                              spacing={1}
+                              alignItems={"center"}
+                            >
+                              <Typography
+                                variant={"caption"}
+                                sx={{ fontWeight: "bold" }}
+                              >
+                                Distancia Total:
+                              </Typography>
+                              <Typography variant={"caption"}>
+                                {Number(
+                                  devices?.find((m) => m.id === vehiculoActual)
+                                    ?.attributes?.totalDistance || 0
+                                ).toFixed(2)}{" "}
+                                km
+                              </Typography>
+                            </Stack>
+                          </Grid>
+                          <Grid item xs={6} md={6}>
+                            <Stack
+                              direction="row"
+                              spacing={1}
+                              alignItems={"center"}
+                            >
+                              <Typography
+                                variant={"caption"}
+                                sx={{ fontWeight: "bold" }}
+                              >
+                                Rumbo:
+                              </Typography>
+                              <Typography
+                                variant={"caption"}
+                                sx={{ position: "relative" }}
+                              >
+                                <Box
+                                  sx={{
+                                    display: "flex",
+                                    alignItems: "center",
+                                    justifyContent: "center",
+                                    transform: `rotate(${
+                                      (devices?.find(
+                                        (m) => m.id === vehiculoActual
+                                      )?.course || 0) + 90
+                                    }deg)`,
+                                  }}
+                                >
+                                  <ArrowBack color="primary" fontSize="small" />
+                                </Box>
+                              </Typography>
+                            </Stack>
+                          </Grid>
+                          <Grid item xs={6} md={6}>
+                            <Stack
+                              direction="row"
+                              spacing={1}
+                              alignItems={"center"}
+                            >
+                              <Typography
+                                variant={"caption"}
+                                sx={{ fontWeight: "bold" }}
+                              >
+                                Motor:
+                              </Typography>
+                              <Typography variant={"caption"}>
+                                <Box
+                                  sx={{
+                                    display: "flex",
+                                    alignItems: "center",
+                                    justifyContent: "center",
+                                  }}
+                                >
+                                  <IconEngineFilled
+                                    color={
+                                      devices?.find(
+                                        (m) => m.id === vehiculoActual
+                                      )?.attributes?.ignition
+                                        ? "green"
+                                        : "red"
+                                    }
+                                    size={16}
+                                  />
+                                </Box>
+                              </Typography>
+                            </Stack>
+                          </Grid>
+                          <Grid item xs={12}>
+                            <Stack
+                              direction="row"
+                              spacing={1}
+                              alignItems={"center"}
+                            >
+                              <Typography
+                                variant={"caption"}
+                                sx={{ fontWeight: "bold" }}
+                              >
+                                Última actualización:
+                              </Typography>
+                              <Typography variant={"caption"}>
+                                {restarCincoHoras(
+                                  devices.find((v) => v.id === vehiculoActual)
+                                    ?.lastUpdate || ""
+                                )}
+                              </Typography>
+                            </Stack>
+                          </Grid>
+                        </Grid>
+                      </Box>
+                    </Stack>
+                  </Paper>
+                </Draggable>
+              </Box>
+            )}
           </Box>
         )}
       </Box>
