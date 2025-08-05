@@ -1,5 +1,11 @@
 import React, { useEffect, useState, useRef, useCallback } from "react";
-import { MapContainer, TileLayer, useMap, ZoomControl } from "react-leaflet";
+import {
+  MapContainer,
+  TileLayer,
+  Tooltip,
+  useMap,
+  ZoomControl,
+} from "react-leaflet";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
 import { useLocation, useNavigate } from "react-router-dom";
@@ -313,15 +319,23 @@ export const Landing = () => {
                     icon={vehicleIcon}
                     rotationOrigin="center center"
                     rotationAngle={(device.course || 0) + 90}
-                  />
+                  >
+                    <Tooltip
+                      permanent
+                      direction="top"
+                      offset={[0, -20]}
+                      opacity={0.8}
+                    >
+                      {device?.name || "Sin nombre"}
+                    </Tooltip>
+                  </RotatedMarker>
                 );
               })}
               {/* Círculo del vehículo seleccionado - SIN key cambiante */}
               {vehiculoActual && (
                 <LeafletCircle
                   center={[
-                    devices?.find((m) => m.id == vehiculoActual)?.latitude ||
-                      0,
+                    devices?.find((m) => m.id == vehiculoActual)?.latitude || 0,
                     devices?.find((m) => m.id == vehiculoActual)?.longitude ||
                       0,
                   ]}
