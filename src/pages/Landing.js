@@ -1,322 +1,282 @@
-import React, { useEffect } from "react";
+import React, { useEffect, useState, useRef } from "react";
+import { MapContainer, TileLayer, useMap } from "react-leaflet";
+import L from "leaflet";
+import "leaflet/dist/leaflet.css";
+import { useLocation, useNavigate } from "react-router-dom";
 import {
   Box,
-  Container,
   Typography,
-  Button,
-  Grid,
-  Card,
-  CardContent,
-  AppBar,
-  Toolbar,
+  Snackbar,
+  Backdrop,
+  useMediaQuery,
   useTheme,
-  alpha,
+  Button,
 } from "@mui/material";
-import {
-  Dashboard as DashboardIcon,
-  Security as SecurityIcon,
-  Speed as SpeedIcon,
-  Cloud as CloudIcon,
-} from "@mui/icons-material";
-import { useNavigate } from "react-router-dom";
+import { WSS_INTERCEPTOR } from "../utils/common";
+import RotatedMarker from "../components/RotatedMarker";
 
-const features = [
-  {
-    icon: <DashboardIcon sx={{ fontSize: 40 }} />,
-    title: "Modern Dashboard",
-    description:
-      "Beautiful and intuitive dashboard with real-time analytics and data visualization.",
-  },
-  {
-    icon: <SecurityIcon sx={{ fontSize: 40 }} />,
-    title: "Secure & Reliable",
-    description:
-      "Enterprise-grade security with role-based access control and data protection.",
-  },
-  {
-    icon: <SpeedIcon sx={{ fontSize: 40 }} />,
-    title: "Fast Performance",
-    description:
-      "Optimized for speed with modern React architecture and efficient data handling.",
-  },
-  {
-    icon: <CloudIcon sx={{ fontSize: 40 }} />,
-    title: "Cloud Ready",
-    description:
-      "Built for the cloud with scalable architecture and seamless API integration.",
-  },
-];
+const getIconUrl = (category) => {
+  switch (category) {
+    case "car":
+      return require("../assets/images/icons/auto.png");
+    case "motorcycle":
+      return require("../assets/images/icons/motocicleta.png");
+    case "scooter":
+      return require("../assets/images/icons/bajaj2.png");
+    case "trolleybus":
+      return require("../assets/images/icons/coaster.png");
+    case "pickup":
+      return require("../assets/images/icons/camioneta.png");
+    case "offroad":
+      return require("../assets/images/icons/camioneta.png");
+    case "bus":
+      return require("../assets/images/icons/minivan.png");
+    default:
+      return require("../assets/images/icons/auto.png");
+  }
+};
+
+// Component to handle map view animation
+const MapViewHandler = ({ devices }) => {
+  const map = useMap();
+  const initialized = useRef(false);
+
+  useEffect(() => {
+    if (devices.length > 0 && !initialized.current) {
+      const points = devices.map((device) => [
+        device.latitude,
+        device.longitude,
+      ]);
+      const bounds = L.latLngBounds(points);
+      map.fitBounds(bounds, { padding: [50, 50], animate: true });
+      initialized.current = true;
+    }
+  }, [devices, map]);
+
+  return null;
+};
 
 export const Landing = () => {
+  const location = useLocation();
+  const [devices, setDevices] = useState([]);
+  const [errorMessage, setErrorMessage] = useState("");
+  const [loadingState, setLoadingState] = useState("connecting"); // connecting, connected, error
+  const wsRef = useRef(null);
+
+  // Use theme and media query for responsive layout
   const theme = useTheme();
   const navigate = useNavigate();
+  const isDesktopOrTablet = useMediaQuery(theme.breakpoints.up("sm"));
+
+  // Clean up function for websocket
+  const cleanupWebSocket = () => {
+    if (wsRef.current) {
+      wsRef.current.onopen = null;
+      wsRef.current.onmessage = null;
+      wsRef.current.onclose = null;
+      wsRef.current.onerror = null;
+
+      if (
+        wsRef.current.readyState === WebSocket.OPEN ||
+        wsRef.current.readyState === WebSocket.CONNECTING
+      ) {
+        wsRef.current.close();
+      }
+      wsRef.current = null;
+    }
+  };
+
   useEffect(() => {
-    // Redirect to login page temporarily for demo purposes
-    navigate("/login");
-  }, []);
+    const params = new URLSearchParams(location.search);
+    const t = params.get("t");
+
+    if (!t) {
+      setErrorMessage(
+        'La URL no contiene el parámetro "t" con el token de acceso.'
+      );
+      setLoadingState("error");
+      return;
+    }
+
+    const wsUrl = `${WSS_INTERCEPTOR}guest?t=${t}`;
+
+    setLoadingState("connecting");
+    console.log("Intentando conectar al WebSocket...");
+
+    wsRef.current = new WebSocket(wsUrl);
+
+    wsRef.current.onopen = () => {
+      console.log("Conectado al servidor WebSocket");
+      setLoadingState("connected");
+      wsRef.current.send("Hello Server!");
+    };
+
+    wsRef.current.onmessage = (event) => {
+      try {
+        const data = JSON.parse(event.data);
+        if (data.devices && Array.isArray(data.devices)) {
+          setDevices(data.devices);
+        }
+      } catch (err) {
+        console.error("Error al procesar mensaje:", err);
+      }
+    };
+
+    wsRef.current.onclose = (event) => {
+      if (event.wasClean) {
+        console.log("Conexión WebSocket cerrada limpiamente.");
+        setErrorMessage("El token de acceso ha expirado.");
+      } else {
+        console.error("Conexión WebSocket cerrada abruptamente.");
+        setErrorMessage(
+          "El token de acceso ha expirado o es inválido, gracias por usar nuestro servicio."
+        );
+      }
+
+      setLoadingState("error");
+    };
+
+    wsRef.current.onerror = () => {
+      console.error("Error en WebSocket");
+      setErrorMessage(
+        "El token ha expirado o es inválido. La conexión no pudo establecerse."
+      );
+      setLoadingState("error");
+    };
+
+    // Cleanup function
+    return () => {
+      console.log("Limpiando componente Map");
+      cleanupWebSocket();
+    };
+  }, [location.search]); // Only re-run if the URL search params change
+
+  // Handle error message dismissal
+  const handleCloseError = () => {};
+
+  // Styles for map and info container
+  const containerStyle = {
+    height: "100vh",
+    width: "100%",
+    overflow: "hidden",
+    display: "flex",
+    flexDirection: isDesktopOrTablet ? "row" : "column",
+    backgroundColor: "#f0f2f5",
+  };
 
   return (
-    <Box>
-      {/* Header */}
-      <AppBar
-        position="fixed"
-        sx={{
-          backgroundColor: "white",
-          color: theme.palette.text.primary,
-          boxShadow: "0 1px 3px rgba(0,0,0,0.12), 0 1px 2px rgba(0,0,0,0.24)",
-        }}
-      >
-        <Toolbar>
-          <Typography variant="h6" sx={{ flexGrow: 1, fontWeight: 700 }}>
-            🍇 BERRY
-          </Typography>
-          <Button
-            color="inherit"
-            onClick={() => navigate("/login")}
-            sx={{ mr: 1 }}
-          >
-            Login
-          </Button>
-          <Button
-            variant="contained"
-            onClick={() => navigate("/signup")}
-            sx={{
-              background: `linear-gradient(135deg, ${theme.palette.primary.main} 0%, ${theme.palette.secondary.main} 100%)`,
-            }}
-          >
-            Get Started
-          </Button>
-        </Toolbar>
-      </AppBar>
-
-      {/* Hero Section */}
+    <Box sx={containerStyle}>
+      {/* Map container */}
       <Box
         sx={{
-          background: `linear-gradient(135deg, ${theme.palette.primary.main} 0%, ${theme.palette.secondary.main} 100%)`,
-          color: "white",
-          pt: 12,
-          pb: 8,
+          flex: isDesktopOrTablet ? 2 : 2,
           position: "relative",
-          overflow: "hidden",
+          height: isDesktopOrTablet ? "100%" : "50%",
         }}
       >
-        <Container maxWidth="lg">
-          <Grid container spacing={4} alignItems="center">
-            <Grid item xs={12} md={6}>
-              <Typography
-                variant="h2"
-                component="h1"
-                sx={{
-                  fontWeight: 700,
-                  mb: 3,
-                  fontSize: { xs: "2.5rem", md: "3.5rem" },
-                }}
-              >
-                Modern Admin Dashboard
-              </Typography>
-              <Typography
-                variant="h5"
-                sx={{
-                  mb: 4,
-                  opacity: 0.9,
-                  fontWeight: 400,
-                  lineHeight: 1.5,
-                }}
-              >
-                Powerful, flexible, and beautiful admin dashboard built with
-                Material-UI and React. Manage your application with ease and
-                style.
-              </Typography>
-              <Box sx={{ display: "flex", gap: 2, flexWrap: "wrap" }}>
-                <Button
-                  variant="contained"
-                  size="large"
-                  onClick={() => navigate("/signup")}
-                  sx={{
-                    backgroundColor: "white",
-                    color: theme.palette.primary.main,
-                    "&:hover": {
-                      backgroundColor: alpha("#ffffff", 0.9),
-                    },
-                    px: 4,
-                    py: 1.5,
-                  }}
-                >
-                  Get Started Free
-                </Button>
-                <Button
-                  variant="outlined"
-                  size="large"
-                  onClick={() => navigate("/login")}
-                  sx={{
-                    borderColor: "white",
-                    color: "white",
-                    "&:hover": {
-                      borderColor: "white",
-                      backgroundColor: alpha("#ffffff", 0.1),
-                    },
-                    px: 4,
-                    py: 1.5,
-                  }}
-                >
-                  Login
-                </Button>
-              </Box>
-            </Grid>
-            <Grid item xs={12} md={6}>
-              <Box
-                sx={{
-                  display: "flex",
-                  justifyContent: "center",
-                  position: "relative",
-                }}
-              >
-                <img
-                  src="https://images.pexels.com/photos/590022/pexels-photo-590022.jpeg?auto=compress&cs=tinysrgb&w=800"
-                  alt="Dashboard Preview"
-                  style={{
-                    width: "100%",
-                    maxWidth: 500,
-                    borderRadius: 16,
-                    boxShadow: "0 20px 40px rgba(0,0,0,0.3)",
-                  }}
-                />
-              </Box>
-            </Grid>
-          </Grid>
-        </Container>
-      </Box>
-
-      {/* Features Section */}
-      <Container maxWidth="lg" sx={{ py: 8 }}>
-        <Typography
-          variant="h3"
-          component="h2"
-          sx={{
-            textAlign: "center",
-            mb: 2,
-            fontWeight: 600,
-          }}
-        >
-          Why Choose Berry?
-        </Typography>
-        <Typography
-          variant="h6"
-          sx={{
-            textAlign: "center",
-            mb: 6,
-            color: theme.palette.text.secondary,
-            maxWidth: 600,
-            mx: "auto",
-          }}
-        >
-          Our admin dashboard provides everything you need to manage your
-          application efficiently
-        </Typography>
-
-        <Grid container spacing={4}>
-          {features.map((feature, index) => (
-            <Grid item xs={12} sm={6} md={3} key={index}>
-              <Card
-                sx={{
-                  height: "100%",
-                  textAlign: "center",
-                  transition: "transform 0.2s ease-in-out",
-                  "&:hover": {
-                    transform: "translateY(-4px)",
-                  },
-                }}
-              >
-                <CardContent sx={{ p: 4 }}>
-                  <Box
-                    sx={{
-                      color: theme.palette.primary.main,
-                      mb: 2,
-                    }}
-                  >
-                    {feature.icon}
-                  </Box>
-                  <Typography
-                    variant="h6"
-                    component="h3"
-                    sx={{ mb: 2, fontWeight: 600 }}
-                  >
-                    {feature.title}
-                  </Typography>
-                  <Typography variant="body2" color="text.secondary">
-                    {feature.description}
-                  </Typography>
-                </CardContent>
-              </Card>
-            </Grid>
-          ))}
-        </Grid>
-      </Container>
-
-      {/* CTA Section */}
-      <Box
-        sx={{
-          backgroundColor: alpha(theme.palette.primary.main, 0.05),
-          py: 8,
-        }}
-      >
-        <Container maxWidth="md">
-          <Box sx={{ textAlign: "center" }}>
-            <Typography
-              variant="h3"
-              component="h2"
-              sx={{
-                mb: 2,
-                fontWeight: 600,
-              }}
+        {loadingState === "connected" && (
+          <Box sx={{ height: "100%", width: "100%", position: "relative" }}>
+            <MapContainer
+              center={[-9.92998, -76.2422]}
+              zoom={14}
+              style={{ height: "100%", width: "100%" }}
             >
-              Ready to Get Started?
-            </Typography>
-            <Typography
-              variant="h6"
-              sx={{
-                mb: 4,
-                color: theme.palette.text.secondary,
-              }}
-            >
-              Join thousands of users who trust Berry for their admin dashboard
-              needs
-            </Typography>
-            <Button
-              variant="contained"
-              size="large"
-              onClick={() => navigate("/signup")}
-              sx={{
-                background: `linear-gradient(135deg, ${theme.palette.primary.main} 0%, ${theme.palette.secondary.main} 100%)`,
-                px: 4,
-                py: 1.5,
-              }}
-            >
-              Start Your Free Trial
-            </Button>
+              <TileLayer
+                url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+                attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+              />
+              {devices.map((device) => {
+                const vehicleIcon = L.icon({
+                  iconUrl: getIconUrl(device?.category || "car"),
+                  iconSize: [42, 48], // Tamaño del icono, puedes ajustarlo según tus necesidades
+                  iconAnchor: [21, 24], // Punto del icono que corresponderá a la ubicación del marcador
+                  popupAnchor: [0, -12], // Punto desde el cual se abrirá el popup en relación con iconAnchor
+                });
+                return (
+                  <RotatedMarker
+                    key={device.id}
+                    title={device?.name || "Sin nombre"}
+                    position={[device.latitude, device.longitude]}
+                    icon={vehicleIcon}
+                    rotationOrigin="center center"
+                    rotationAngle={(device.course || 0) + 90}
+                  />
+                );
+              })}
+              <MapViewHandler devices={devices} />
+            </MapContainer>
           </Box>
-        </Container>
+        )}
       </Box>
 
-      {/* Footer */}
-      <Box
-        sx={{
-          backgroundColor: theme.palette.grey[100],
-          py: 4,
-        }}
+      {/* Error message as a snackbar */}
+      <Snackbar
+        open={!!errorMessage && loadingState !== "error"}
+        onClose={handleCloseError}
+        anchorOrigin={{ vertical: "top", horizontal: "center" }}
+        autoHideDuration={6000}
       >
-        <Container maxWidth="lg">
+        <Box
+          sx={{
+            bgcolor: "error.dark",
+            color: "white",
+            py: 2,
+            px: 3,
+            borderRadius: 1,
+            boxShadow: "0 4px 12px rgba(0,0,0,0.15)",
+          }}
+        >
+          <Typography variant="body1">{errorMessage}</Typography>
+        </Box>
+      </Snackbar>
+
+      {/* Error overlay with semi-transparent backdrop */}
+      <Backdrop
+        sx={{ color: "#fff", zIndex: 1000 }}
+        open={loadingState === "error"}
+        onClick={handleCloseError}
+      >
+        <Box
+          sx={{
+            p: 4,
+            bgcolor: "error.main",
+            borderRadius: 2,
+            display: "flex",
+            flexDirection: "column",
+            alignItems: "center",
+            maxWidth: "80%",
+            boxShadow: "0 8px 32px rgba(0,0,0,0.2)",
+          }}
+        >
           <Typography
-            variant="body2"
-            sx={{
-              textAlign: "center",
-              color: theme.palette.text.secondary,
-            }}
+            variant="h5"
+            component="h2"
+            align="center"
+            color="white"
+            sx={{ mb: 2 }}
           >
-            © 2025 Oasis Inc. by Elim Quijano. Todos los derechos reservados
+            Error de Conexión
           </Typography>
-        </Container>
-      </Box>
+          <img
+            src={require("../assets/images/advertencia.png")}
+            alt="Error"
+            width={100}
+            height={100}
+            style={{ marginBottom: 16 }}
+          />
+          <Typography variant="body1" align="center" color="white">
+            {errorMessage}
+          </Typography>
+          <Button
+            color="warning"
+            onClick={() => navigate("/login")}
+            variant="contained"
+            sx={{ margin: 2 }}
+          >
+            Ir a Login
+          </Button>
+        </Box>
+      </Backdrop>
     </Box>
   );
 };
