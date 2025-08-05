@@ -796,7 +796,7 @@ export const MapaPage = () => {
               <Box
                 sx={{
                   position: "absolute",
-                  bottom: 20,
+                  bottom: 5,
                   width: "100%",
                   display: "flex",
                   justifyContent: "center",
@@ -810,9 +810,8 @@ export const MapaPage = () => {
                     sx={{
                       pointerEvents: "auto", // Reactiva eventos para el panel
                       borderRadius: 0,
-                      width: { xs: "calc(100% - 40px)", md: "480px" },
+                      width: { xs: "calc(100% - 20px)", md: "480px" },
                       margin: 0,
-                      padding: 2,
                       boxShadow: "0px 0px 15px rgba(0,0,0,0.2)",
                     }}
                   >
@@ -827,7 +826,6 @@ export const MapaPage = () => {
                         alignItems={"center"}
                         sx={{
                           cursor: "move",
-                          marginBottom: 1,
                         }}
                       >
                         <Typography
@@ -835,6 +833,7 @@ export const MapaPage = () => {
                           sx={{
                             fontWeight: "bold",
                             color: "primary.main",
+                            padding: 1,
                           }}
                         >
                           {vehiculos.find((v) => v.id === vehiculoActual)
@@ -843,13 +842,13 @@ export const MapaPage = () => {
                         <Button
                           color="primary"
                           onClick={() => setVehiculoActual(null)}
-                          sx={{ minWidth: "auto" }}
+                          sx={{ minWidth: "auto", zIndex: 1001 }}
                         >
                           <Close fontSize={isMd ? "medium" : "small"} />
                         </Button>
                       </Stack>
-                      <Box>
-                        <Grid container spacing={isMd ? 2 : 1}>
+                      <Box sx={{ padding: 1 }}>
+                        <Grid container spacing={isMd ? 1 : 0}>
                           <Grid item xs={12} md={6}>
                             <Stack
                               direction="row"
@@ -872,7 +871,7 @@ export const MapaPage = () => {
                               </Typography>
                             </Stack>
                           </Grid>
-                          <Grid item xs={12} md={6}>
+                          <Grid item xs={6} md={6}>
                             <Stack
                               direction="row"
                               spacing={1}
@@ -905,6 +904,26 @@ export const MapaPage = () => {
                               </Typography>
                             </Stack>
                           </Grid>
+                          <Grid item xs={6} md={6}>
+                            <Stack
+                              direction="row"
+                              spacing={1}
+                              alignItems={"center"}
+                            >
+                              <Typography
+                                variant={"caption"}
+                                sx={{ fontWeight: "bold" }}
+                              >
+                                Bateria:
+                              </Typography>
+                              <Typography variant={"caption"}>
+                                {marcadores?.find(
+                                  (m) => m.deviceId === vehiculoActual
+                                )?.attributes?.batteryLevel || "100"}{" "}
+                                %
+                              </Typography>
+                            </Stack>
+                          </Grid>
                           <Grid item xs={12} md={6}>
                             <Stack
                               direction="row"
@@ -927,27 +946,7 @@ export const MapaPage = () => {
                               </Typography>
                             </Stack>
                           </Grid>
-                          <Grid item xs={12} md={6}>
-                            <Stack
-                              direction="row"
-                              spacing={1}
-                              alignItems={"center"}
-                            >
-                              <Typography
-                                variant={"caption"}
-                                sx={{ fontWeight: "bold" }}
-                              >
-                                Bateria:
-                              </Typography>
-                              <Typography variant={"caption"}>
-                                {marcadores?.find(
-                                  (m) => m.deviceId === vehiculoActual
-                                )?.attributes?.batteryLevel || "100"}{" "}
-                                %
-                              </Typography>
-                            </Stack>
-                          </Grid>
-                          <Grid item xs={12} md={6}>
+                          <Grid item xs={6} md={6}>
                             <Stack
                               direction="row"
                               spacing={1}
@@ -980,7 +979,7 @@ export const MapaPage = () => {
                               </Typography>
                             </Stack>
                           </Grid>
-                          <Grid item xs={12} md={6}>
+                          <Grid item xs={6} md={6}>
                             <Stack
                               direction="row"
                               spacing={1}
@@ -1036,7 +1035,7 @@ export const MapaPage = () => {
                           </Grid>
                         </Grid>
                       </Box>
-                      <Box sx={{ marginTop: 1 }}>
+                      <Box sx={{ padding: 1 }}>
                         <Stack direction="row" justifyContent="space-between">
                           <IconButton size="small" onClick={() => {}}>
                             <Edit />
