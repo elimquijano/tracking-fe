@@ -29,6 +29,16 @@ import {
   Grid,
   useMediaQuery,
   IconButton,
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  FormControl,
+  InputLabel,
+  Select,
+  MenuItem,
+  FormControlLabel,
+  Checkbox,
+  DialogActions,
 } from "@mui/material";
 import {
   ArrowBack,
@@ -44,12 +54,18 @@ import {
 import { Circle as LeafletCircle } from "react-leaflet";
 import { WebSocketContext } from "../contexts/SocketContext";
 import { IconCircle } from "../components/iconCircle";
-import { getTraccar } from "../utils/common";
+import {
+  API_HTTP_INTERCEPTOR,
+  decodeBase64,
+  getSession,
+  getTraccar,
+} from "../utils/common";
 import { theme } from "../theme/theme";
 import { IconEngineFilled } from "@tabler/icons-react";
 import RotatedMarker from "../components/RotatedMarker";
 import Draggable from "react-draggable";
 import { Link } from "react-router-dom";
+import { notificationSwal } from "../utils/swal-helpers";
 
 // Configuración de iconos
 delete L.Icon.Default.prototype._getIconUrl;
@@ -151,6 +167,19 @@ export const MapaPage = () => {
   const isMd = useMediaQuery((theme) => theme.breakpoints.up("md"));
   const { BaseLayer } = LayersControl;
   const { devices, positions } = useContext(WebSocketContext);
+
+  const [openDialog, setOpenDialog] = useState(false);
+  const [isSharing, setIsSharing] = useState(false);
+  const [shareWithContacts, setShareWithContacts] = useState(false);
+  const [selectedOption, setSelectedOption] = useState("18 horas");
+  const [customDate, setCustomDate] = useState("");
+
+  const handleOptionChange = (event) => {
+    setSelectedOption(event.target.value);
+    if (event.target.value !== "personalizado") {
+      setCustomDate("");
+    }
+  };
 
   // Inicialización
   useEffect(() => {
@@ -379,6 +408,88 @@ export const MapaPage = () => {
       setGrupos(result.data);
     } catch (error) {
       console.log("error: " + error);
+    }
+  }
+
+  const getExpirationDate = () => {
+    const now = new Date();
+    switch (selectedOption) {
+      case "15 min":
+        now.setMinutes(now.getMinutes() + 15);
+        break;
+      case "1 hora":
+        now.setHours(now.getHours() + 1);
+        break;
+      case "18 horas":
+        now.setHours(now.getHours() + 18);
+        break;
+      case "1 dia":
+        now.setDate(now.getDate() + 1);
+        break;
+      case "personalizado":
+        return customDate;
+      default:
+        return null;
+    }
+    return now.toISOString().slice(0, 19).replace("T", " ");
+  };
+
+  async function handleShareLocation() {
+    if (!selectedOption) {
+      notificationSwal(
+        "Error",
+        "Selecciona una opción de expiración.",
+        "error"
+      );
+      return;
+    }
+    setIsSharing(true);
+    const expirationDate = getExpirationDate();
+    if (expirationDate) {
+      try {
+        const { username, password } = decodeBase64(
+          getSession("SESSION_TOKEN")
+        );
+        const myHeaders = new Headers();
+        myHeaders.append("Content-Type", "application/json");
+
+        const raw = JSON.stringify({
+          deviceid: vehiculoActual,
+          expires_at: expirationDate,
+          usuario: username,
+          contraseña: password,
+        });
+
+        const requestOptions = {
+          method: "POST",
+          headers: myHeaders,
+          body: raw,
+          redirect: "follow",
+        };
+
+        fetch(API_HTTP_INTERCEPTOR + "share", requestOptions)
+          .then((response) => response.json())
+          .then((result) => {
+            const { token } = result;
+            const link = `${window.location.origin}/?t=${token}`;
+            notificationSwal("Éxito", "Ubicación compartida con éxito.", "success");
+            window.open(link, "_blank");
+          })
+          .catch((error) => {
+            console.log("Error al compartir ubicación:", error);
+            notificationSwal("Error", "Error al compartir ubicación.", "error");
+          });
+      } catch (error) {
+        notificationSwal(
+          "Error",
+          "Error al obtener los datos de acceso.",
+          "error"
+        );
+      } finally {
+        setOpenDialog(false);
+        setSelectedOption(null);
+        setIsSharing(false);
+      }
     }
   }
 
@@ -1048,7 +1159,10 @@ export const MapaPage = () => {
                           >
                             <History />
                           </IconButton>
-                          <IconButton size="small" onClick={() => {}}>
+                          <IconButton
+                            size="small"
+                            onClick={() => setOpenDialog(true)}
+                          >
                             <Share />
                           </IconButton>
                         </Stack>
@@ -1065,6 +1179,87 @@ export const MapaPage = () => {
           <Typography>No se encontraron resultados.</Typography>
         </Box>
       )}
+      <Dialog
+        open={openDialog}
+        onClose={() => setOpenDialog(false)}
+        maxWidth="xs"
+        sx={{ zIndex: 500 }}
+      >
+        <DialogTitle sx={{ fontSize: "1.2rem", textAlign: "center" }}>
+          ¿Hasta cuándo desea compartir la ubicación de este vehículo?
+        </DialogTitle>
+        <DialogContent>
+          <Box
+            sx={{
+              display: "flex",
+              flexDirection: "column",
+              gap: 2,
+            }}
+          >
+            <FormControl fullWidth>
+              <Select
+                labelId="expiration-label"
+                id="expiration-select"
+                value={selectedOption}
+                onChange={handleOptionChange}
+                fullWidth
+              >
+                <MenuItem value="">
+                  <em>Seleccionar</em>
+                </MenuItem>
+                <MenuItem value="15 min">15 minutos</MenuItem>
+                <MenuItem value="1 hora">1 hora</MenuItem>
+                <MenuItem value="18 horas">18 horas</MenuItem>
+                <MenuItem value="1 dia">1 día</MenuItem>
+                <MenuItem value="personalizado">Personalizado</MenuItem>
+              </Select>
+            </FormControl>
+
+            {selectedOption === "personalizado" && (
+              <TextField
+                id="custom-date-time"
+                type="datetime-local"
+                value={customDate}
+                onChange={(e) => setCustomDate(e.target.value)}
+                InputLabelProps={{
+                  shrink: true,
+                }}
+                fullWidth
+              />
+            )}
+            <FormControl fullWidth>
+              <FormControlLabel
+                control={
+                  <Checkbox
+                    checked={shareWithContacts}
+                    onChange={(e) => setShareWithContacts(e.target.checked)}
+                  />
+                }
+                label="Compartir ubicación con sus contactos"
+              />
+            </FormControl>
+          </Box>
+        </DialogContent>
+        <DialogActions sx={{ justifyContent: "center" }}>
+          <Button
+            variant="contained"
+            onClick={() => setOpenDialog(false)}
+            sx={{ backgroundColor: "grey.500" }}
+          >
+            Cancelar
+          </Button>
+          <Button
+            variant="contained"
+            onClick={handleShareLocation}
+            disabled={isSharing}
+            sx={{
+              backgroundColor: isSharing ? "grey.500" : "primary.main",
+            }}
+          >
+            Compartir
+          </Button>
+        </DialogActions>
+      </Dialog>
     </Box>
   );
 };
