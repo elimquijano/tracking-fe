@@ -53,9 +53,22 @@ const apiTraccar = axios.create({
   baseURL: API_URL_TRACCAR,
   headers: {
     "Content-Type": "application/json",
-    Authorization: "Basic " + getSession("SESSION_TOKEN"),
   },
 });
+
+// Usar un interceptor para añadir dinámicamente el token de autorización en cada solicitud
+apiTraccar.interceptors.request.use(
+  (config) => {
+    const token = getSession("SESSION_TOKEN");
+    if (token) {
+      config.headers["Authorization"] = "Basic " + token;
+    }
+    return config;
+  },
+  (error) => {
+    return Promise.reject(error);
+  }
+);
 
 // Función para hacer una solicitud GET
 export const getTraccar = async (endpoint, params = {}) => {
