@@ -33,7 +33,6 @@ import {
   DialogTitle,
   DialogContent,
   FormControl,
-  InputLabel,
   Select,
   MenuItem,
   FormControlLabel,
@@ -157,7 +156,6 @@ export const MapaPage = () => {
   const [vehiculos, setVehiculos] = useState([]);
   const [marcadores, setMarcadores] = useState([]);
   const [filteredVehiculos, setFilteredVehiculos] = useState([]);
-  const [vehiculoActual, setVehiculoActual] = useState(null);
   const [statusFilter, setStatusFilter] = useState(null);
   const [grupos, setGrupos] = useState([]);
   const [geofences, setGeofences] = useState([]);
@@ -166,7 +164,8 @@ export const MapaPage = () => {
 
   const isMd = useMediaQuery((theme) => theme.breakpoints.up("md"));
   const { BaseLayer } = LayersControl;
-  const { devices, positions } = useContext(WebSocketContext);
+  const { devices, positions, vehiculoActual, setVehiculoActual } =
+    useContext(WebSocketContext);
 
   const [openDialog, setOpenDialog] = useState(false);
   const [isSharing, setIsSharing] = useState(false);
@@ -472,7 +471,11 @@ export const MapaPage = () => {
           .then((result) => {
             const { token } = result;
             const link = `${window.location.origin}/?t=${token}&d=${vehiculoActual}`;
-            notificationSwal("Éxito", "Ubicación compartida con éxito.", "success");
+            notificationSwal(
+              "Éxito",
+              "Ubicación compartida con éxito.",
+              "success"
+            );
             window.open(link, "_blank");
           })
           .catch((error) => {
@@ -1148,7 +1151,11 @@ export const MapaPage = () => {
                       </Box>
                       <Box sx={{ padding: 1 }}>
                         <Stack direction="row" justifyContent="space-between">
-                          <IconButton size="small" onClick={() => {}}>
+                          <IconButton
+                            size="small"
+                            component={Link}
+                            to={`/dashboard/transporte/dispositivo/${vehiculoActual}`}
+                          >
                             <Edit />
                           </IconButton>
                           <IconButton
@@ -1181,10 +1188,10 @@ export const MapaPage = () => {
       <Dialog
         open={openDialog}
         onClose={() => setOpenDialog(false)}
-        maxWidth="xs"
+        maxWidth="xl"
         sx={{ zIndex: 500 }}
       >
-        <DialogTitle sx={{ fontSize: "1.2rem", textAlign: "center" }}>
+        <DialogTitle sx={{ textAlign: "center" }}>
           ¿Hasta cuándo desea compartir la ubicación de este vehículo?
         </DialogTitle>
         <DialogContent>
@@ -1192,7 +1199,7 @@ export const MapaPage = () => {
             sx={{
               display: "flex",
               flexDirection: "column",
-              gap: 2,
+              gap: 1,
             }}
           >
             <FormControl fullWidth>
@@ -1202,6 +1209,7 @@ export const MapaPage = () => {
                 value={selectedOption}
                 onChange={handleOptionChange}
                 fullWidth
+                size="small"
               >
                 <MenuItem value="">
                   <em>Seleccionar</em>

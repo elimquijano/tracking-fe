@@ -37,7 +37,7 @@ import { useAuth } from "../contexts/AuthContext";
 
 const columns = [
   { id: "name", label: "NOMBRE", minWidth: 170, key: 1 },
-  { id: "uniqueId", label: "IDENTIFICADOR", minWidth: 170, key: 2 },
+  { id: "uniqueId", label: "NÚMERO DE WHATSAPP", minWidth: 170, key: 2 },
 ];
 
 export default function ConductoresPage() {
@@ -235,7 +235,7 @@ export default function ConductoresPage() {
             </Grid>
             <Grid item xs={6} md={4}>
               <Box sx={{ mb: 1 }}>
-                <label>Identificador:</label>
+                <label>Número de Whatsapp:</label>
               </Box>
               <TextField
                 type="text"
@@ -353,7 +353,8 @@ export default function ConductoresPage() {
             <Grid item xs={12} sm={6}>
               <TextField
                 fullWidth
-                label="Identiﬁcador"
+                label="Número de Whatsapp"
+                type="number"
                 value={formData.uniqueId}
                 onChange={(e) =>
                   setFormData((prev) => ({

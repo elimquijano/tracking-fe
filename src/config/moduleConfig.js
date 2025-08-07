@@ -47,6 +47,7 @@ import ParadasPage from "../pages/reportes/ParadasPage";
 import ResumenPage from "../pages/reportes/ResumenPage";
 import RutaPage from "../pages/reportes/RutaPage";
 import ConductoresPage from "../pages/ConductoresPage";
+import { DispositivoDetailPage } from "../pages/DispositivoDetailPage";
 
 // Mapeo de componentes - AQUÍ AGREGAS NUEVOS COMPONENTES
 export const componentMap = {
@@ -78,6 +79,7 @@ export const componentMap = {
   ViajesPage,
   HistorialDeRecorridoPage,
   ConductoresPage,
+  DispositivoDetailPage,
 };
 
 // Mapeo de iconos - AQUÍ TIENES TODOS LOS ICONOS DISPONIBLES

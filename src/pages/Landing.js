@@ -23,7 +23,7 @@ import {
 import { WSS_INTERCEPTOR } from "../utils/common";
 import RotatedMarker from "../components/RotatedMarker";
 import Draggable from "react-draggable";
-import { ArrowBack, Close } from "@mui/icons-material";
+import { ArrowBack } from "@mui/icons-material";
 import { theme } from "../theme/theme";
 import { IconEngineFilled } from "@tabler/icons-react";
 import { Circle as LeafletCircle } from "react-leaflet";
@@ -57,7 +57,7 @@ const MapController = ({ vehiculoActual, marcadores }) => {
     if (vehiculoActual) {
       const marcador = marcadores?.find((m) => m.id == vehiculoActual);
       if (marcador?.latitude && marcador?.longitude) {
-        map.setView([marcador.latitude, marcador.longitude], 17);
+        map.setView([marcador.latitude, marcador.longitude], 15);
       }
     }
   }, [marcadores, map]);
@@ -66,7 +66,7 @@ const MapController = ({ vehiculoActual, marcadores }) => {
     if (vehiculoActual) {
       const marcador = marcadores?.find((m) => m.id == vehiculoActual);
       if (marcador?.latitude && marcador?.longitude) {
-        map.flyTo([marcador.latitude, marcador.longitude], 17);
+        map.flyTo([marcador.latitude, marcador.longitude], 15);
       }
     } else {
       map.flyTo([-9.9306, -76.2422], 10); // Vista por defecto
@@ -97,7 +97,6 @@ export const Landing = () => {
 
   // Use theme and media query for responsive layout
   const navigate = useNavigate();
-  const isDesktopOrTablet = useMediaQuery(theme.breakpoints.up("sm"));
   const isMd = useMediaQuery((theme) => theme.breakpoints.up("md"));
 
   // Clean up function for websocket
@@ -272,324 +271,308 @@ export const Landing = () => {
     height: "100vh",
     width: "100%",
     overflow: "hidden",
-    display: "flex",
-    flexDirection: isDesktopOrTablet ? "row" : "column",
     backgroundColor: "#f0f2f5",
   };
 
   return (
     <Box sx={containerStyle}>
       {/* Map container */}
-      <Box
-        sx={{
-          flex: isDesktopOrTablet ? 2 : 2,
-          position: "relative",
-          height: isDesktopOrTablet ? "100%" : "50%",
-        }}
-      >
-        {loadingState == "connected" && (
-          <Box sx={{ height: "100%", width: "100%", position: "relative" }}>
-            <MapContainer
-              style={{ width: "100%", height: "100%" }}
-              center={[0, 0]}
-              zoom={1}
-              zoomControl={false}
-            >
-              <TileLayer
-                url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-                attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
-              />
-              <ZoomControl position="bottomleft" />
-              <MapController
-                vehiculoActual={vehiculoActual}
-                marcadores={devices}
-              />
-              {devices.map((device) => {
-                const vehicleIcon = L.icon({
-                  iconUrl: getIconUrl(device?.category || "car"),
-                  iconSize: [42, 48], // Tamaño del icono, puedes ajustarlo según tus necesidades
-                  iconAnchor: [21, 24], // Punto del icono que corresponderá a la ubicación del marcador
-                  popupAnchor: [0, -12], // Punto desde el cual se abrirá el popup en relación con iconAnchor
-                });
-                return (
-                  <RotatedMarker
-                    key={device.id}
-                    title={device?.name || "Sin nombre"}
-                    position={[device.latitude, device.longitude]}
-                    icon={vehicleIcon}
-                    rotationOrigin="center center"
-                    rotationAngle={(device.course || 0) + 90}
+      {loadingState == "connected" && (
+        <Box sx={{ height: "100%", width: "100%", position: "relative" }}>
+          <MapContainer
+            style={{ width: "100%", height: "100%" }}
+            center={[0, 0]}
+            zoom={1}
+            zoomControl={false}
+          >
+            <TileLayer
+              url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+              attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+            />
+            <ZoomControl position="bottomleft" />
+            <MapController
+              vehiculoActual={vehiculoActual}
+              marcadores={devices}
+            />
+            {devices.map((device) => {
+              const vehicleIcon = L.icon({
+                iconUrl: getIconUrl(device?.category || "car"),
+                iconSize: [42, 48], // Tamaño del icono, puedes ajustarlo según tus necesidades
+                iconAnchor: [21, 24], // Punto del icono que corresponderá a la ubicación del marcador
+                popupAnchor: [0, -12], // Punto desde el cual se abrirá el popup en relación con iconAnchor
+              });
+              return (
+                <RotatedMarker
+                  key={device.id}
+                  title={device?.name || "Sin nombre"}
+                  position={[device.latitude, device.longitude]}
+                  icon={vehicleIcon}
+                  rotationOrigin="center center"
+                  rotationAngle={(device.course || 0) + 90}
+                >
+                  <Tooltip
+                    permanent
+                    direction="top"
+                    offset={[0, -20]}
+                    opacity={0.8}
                   >
-                    <Tooltip
-                      permanent
-                      direction="top"
-                      offset={[0, -20]}
-                      opacity={0.8}
-                    >
-                      {device?.name || "Sin nombre"}
-                    </Tooltip>
-                  </RotatedMarker>
-                );
-              })}
-              {/* Círculo del vehículo seleccionado - SIN key cambiante */}
-              {vehiculoActual && (
-                <LeafletCircle
-                  center={[
-                    devices?.find((m) => m.id == vehiculoActual)?.latitude || 0,
-                    devices?.find((m) => m.id == vehiculoActual)?.longitude ||
-                      0,
-                  ]}
-                  radius={500}
-                  pathOptions={{
-                    color: "rgba(0, 128, 0, 0.0)",
-                    fillColor: "rgba(141, 36, 170, 1)",
-                    fillOpacity: 0.2,
-                  }}
-                />
-              )}
-            </MapContainer>
-            {/* Panel de vehículo seleccionado */}
+                    {device?.name || "Sin nombre"}
+                  </Tooltip>
+                </RotatedMarker>
+              );
+            })}
+            {/* Círculo del vehículo seleccionado - SIN key cambiante */}
             {vehiculoActual && (
-              <Box
-                sx={{
-                  position: "absolute",
-                  bottom: 20,
-                  width: "100%",
-                  display: "flex",
-                  justifyContent: "center",
-                  zIndex: 1000,
-                  pointerEvents: "none", // Permite clics en el mapa
+              <LeafletCircle
+                center={[
+                  devices?.find((m) => m.id == vehiculoActual)?.latitude || 0,
+                  devices?.find((m) => m.id == vehiculoActual)?.longitude || 0,
+                ]}
+                radius={500}
+                pathOptions={{
+                  color: "rgba(0, 128, 0, 0.0)",
+                  fillColor: "rgba(141, 36, 170, 1)",
+                  fillOpacity: 0.2,
                 }}
-              >
-                <Draggable handle=".handle">
-                  <Paper
-                    onMouseDown={(e) => e.stopPropagation()}
-                    sx={{
-                      pointerEvents: "auto", // Reactiva eventos para el panel
-                      borderRadius: 0,
-                      width: { xs: "calc(100% - 20px)", md: "480px" },
-                      margin: 0,
-                      boxShadow: "0px 0px 15px rgba(0,0,0,0.2)",
-                    }}
-                  >
+              />
+            )}
+          </MapContainer>
+          {/* Panel de vehículo seleccionado */}
+          {vehiculoActual && (
+            <Box
+              sx={{
+                position: "absolute",
+                bottom: 20,
+                width: "100%",
+                display: "flex",
+                justifyContent: "center",
+                zIndex: 1000,
+                pointerEvents: "none", // Permite clics en el mapa
+              }}
+            >
+              <Draggable handle=".handle">
+                <Paper
+                  onMouseDown={(e) => e.stopPropagation()}
+                  sx={{
+                    pointerEvents: "auto", // Reactiva eventos para el panel
+                    borderRadius: 0,
+                    width: { xs: "calc(100% - 20px)", md: "480px" },
+                    margin: 0,
+                    boxShadow: "0px 0px 15px rgba(0,0,0,0.2)",
+                  }}
+                >
+                  <Stack direction={"column"} style={{ position: "relative" }}>
                     <Stack
-                      direction={"column"}
-                      style={{ position: "relative" }}
+                      className="handle"
+                      direction={"row"}
+                      justifyContent={"space-between"}
+                      alignItems={"center"}
+                      sx={{
+                        cursor: "move",
+                      }}
                     >
-                      <Stack
-                        className="handle"
-                        direction={"row"}
-                        justifyContent={"space-between"}
-                        alignItems={"center"}
+                      <Typography
+                        variant={isMd ? "h4" : "h6"}
                         sx={{
-                          cursor: "move",
+                          fontWeight: "bold",
+                          color: "primary.main",
+                          padding: 1,
                         }}
                       >
-                        <Typography
-                          variant={isMd ? "h4" : "h6"}
-                          sx={{
-                            fontWeight: "bold",
-                            color: "primary.main",
-                            padding: 1,
-                          }}
-                        >
-                          {devices.find((v) => v.id == vehiculoActual)?.name ||
-                            "-"}
-                        </Typography>
-                        <></>
-                      </Stack>
-                      <Box sx={{ padding: 1 }}>
-                        <Grid container spacing={isMd ? 1 : 0}>
-                          <Grid item xs={12} md={6}>
-                            <Stack
-                              direction="row"
-                              spacing={1}
-                              alignItems={"center"}
+                        {devices.find((v) => v.id == vehiculoActual)?.name ||
+                          "-"}
+                      </Typography>
+                      <></>
+                    </Stack>
+                    <Box sx={{ padding: 1 }}>
+                      <Grid container spacing={isMd ? 1 : 0}>
+                        <Grid item xs={12} md={6}>
+                          <Stack
+                            direction="row"
+                            spacing={1}
+                            alignItems={"center"}
+                          >
+                            <Typography
+                              variant={"caption"}
+                              sx={{ fontWeight: "bold" }}
                             >
-                              <Typography
-                                variant={"caption"}
-                                sx={{ fontWeight: "bold" }}
-                              >
-                                Velocidad:
-                              </Typography>
-                              <Typography variant={"caption"}>
-                                {Number(
-                                  devices?.find((m) => m.id == vehiculoActual)
-                                    ?.speed || 0
-                                ).toFixed(2)}{" "}
-                                Km/h
-                              </Typography>
-                            </Stack>
-                          </Grid>
-                          <Grid item xs={6} md={6}>
-                            <Stack
-                              direction="row"
-                              spacing={1}
-                              alignItems={"center"}
+                              Velocidad:
+                            </Typography>
+                            <Typography variant={"caption"}>
+                              {Number(
+                                devices?.find((m) => m.id == vehiculoActual)
+                                  ?.speed || 0
+                              ).toFixed(2)}{" "}
+                              Km/h
+                            </Typography>
+                          </Stack>
+                        </Grid>
+                        <Grid item xs={6} md={6}>
+                          <Stack
+                            direction="row"
+                            spacing={1}
+                            alignItems={"center"}
+                          >
+                            <Typography
+                              variant={"caption"}
+                              sx={{ fontWeight: "bold" }}
                             >
-                              <Typography
-                                variant={"caption"}
-                                sx={{ fontWeight: "bold" }}
-                              >
-                                Estado:
-                              </Typography>
-                              <Typography
-                                variant={"caption"}
-                                sx={{
-                                  color: definirColorDeEstado(
+                              Estado:
+                            </Typography>
+                            <Typography
+                              variant={"caption"}
+                              sx={{
+                                color: definirColorDeEstado(
+                                  devices.find((v) => v.id == vehiculoActual)
+                                    ?.status
+                                ),
+                              }}
+                            >
+                              {devices.find((v) => v.id == vehiculoActual)
+                                ?.status == "online"
+                                ? "En linea"
+                                : getTimeAgo(
                                     devices.find((v) => v.id == vehiculoActual)
-                                      ?.status
-                                  ),
+                                      ?.lastUpdate
+                                  ) || "Desconocido"}
+                            </Typography>
+                          </Stack>
+                        </Grid>
+                        <Grid item xs={6} md={6}>
+                          <Stack
+                            direction="row"
+                            spacing={1}
+                            alignItems={"center"}
+                          >
+                            <Typography
+                              variant={"caption"}
+                              sx={{ fontWeight: "bold" }}
+                            >
+                              Bateria:
+                            </Typography>
+                            <Typography variant={"caption"}>
+                              {devices?.find((m) => m.id == vehiculoActual)
+                                ?.attributes?.batteryLevel || "100"}{" "}
+                              %
+                            </Typography>
+                          </Stack>
+                        </Grid>
+                        <Grid item xs={12} md={6}>
+                          <Stack
+                            direction="row"
+                            spacing={1}
+                            alignItems={"center"}
+                          >
+                            <Typography
+                              variant={"caption"}
+                              sx={{ fontWeight: "bold" }}
+                            >
+                              Distancia Total:
+                            </Typography>
+                            <Typography variant={"caption"}>
+                              {Number(
+                                devices?.find((m) => m.id == vehiculoActual)
+                                  ?.attributes?.totalDistance || 0
+                              ).toFixed(2)}{" "}
+                              km
+                            </Typography>
+                          </Stack>
+                        </Grid>
+                        <Grid item xs={6} md={6}>
+                          <Stack
+                            direction="row"
+                            spacing={1}
+                            alignItems={"center"}
+                          >
+                            <Typography
+                              variant={"caption"}
+                              sx={{ fontWeight: "bold" }}
+                            >
+                              Rumbo:
+                            </Typography>
+                            <Typography
+                              variant={"caption"}
+                              sx={{ position: "relative" }}
+                            >
+                              <Box
+                                sx={{
+                                  display: "flex",
+                                  alignItems: "center",
+                                  justifyContent: "center",
+                                  transform: `rotate(${
+                                    (devices?.find(
+                                      (m) => m.id == vehiculoActual
+                                    )?.course || 0) + 90
+                                  }deg)`,
                                 }}
                               >
-                                {devices.find((v) => v.id == vehiculoActual)
-                                  ?.status == "online"
-                                  ? "En linea"
-                                  : getTimeAgo(
-                                      devices.find(
-                                        (v) => v.id == vehiculoActual
-                                      )?.lastUpdate
-                                    ) || "Desconocido"}
-                              </Typography>
-                            </Stack>
-                          </Grid>
-                          <Grid item xs={6} md={6}>
-                            <Stack
-                              direction="row"
-                              spacing={1}
-                              alignItems={"center"}
-                            >
-                              <Typography
-                                variant={"caption"}
-                                sx={{ fontWeight: "bold" }}
-                              >
-                                Bateria:
-                              </Typography>
-                              <Typography variant={"caption"}>
-                                {devices?.find((m) => m.id == vehiculoActual)
-                                  ?.attributes?.batteryLevel || "100"}{" "}
-                                %
-                              </Typography>
-                            </Stack>
-                          </Grid>
-                          <Grid item xs={12} md={6}>
-                            <Stack
-                              direction="row"
-                              spacing={1}
-                              alignItems={"center"}
-                            >
-                              <Typography
-                                variant={"caption"}
-                                sx={{ fontWeight: "bold" }}
-                              >
-                                Distancia Total:
-                              </Typography>
-                              <Typography variant={"caption"}>
-                                {Number(
-                                  devices?.find((m) => m.id == vehiculoActual)
-                                    ?.attributes?.totalDistance || 0
-                                ).toFixed(2)}{" "}
-                                km
-                              </Typography>
-                            </Stack>
-                          </Grid>
-                          <Grid item xs={6} md={6}>
-                            <Stack
-                              direction="row"
-                              spacing={1}
-                              alignItems={"center"}
-                            >
-                              <Typography
-                                variant={"caption"}
-                                sx={{ fontWeight: "bold" }}
-                              >
-                                Rumbo:
-                              </Typography>
-                              <Typography
-                                variant={"caption"}
-                                sx={{ position: "relative" }}
-                              >
-                                <Box
-                                  sx={{
-                                    display: "flex",
-                                    alignItems: "center",
-                                    justifyContent: "center",
-                                    transform: `rotate(${
-                                      (devices?.find(
-                                        (m) => m.id == vehiculoActual
-                                      )?.course || 0) + 90
-                                    }deg)`,
-                                  }}
-                                >
-                                  <ArrowBack color="primary" fontSize="small" />
-                                </Box>
-                              </Typography>
-                            </Stack>
-                          </Grid>
-                          <Grid item xs={6} md={6}>
-                            <Stack
-                              direction="row"
-                              spacing={1}
-                              alignItems={"center"}
-                            >
-                              <Typography
-                                variant={"caption"}
-                                sx={{ fontWeight: "bold" }}
-                              >
-                                Motor:
-                              </Typography>
-                              <Typography variant={"caption"}>
-                                <Box
-                                  sx={{
-                                    display: "flex",
-                                    alignItems: "center",
-                                    justifyContent: "center",
-                                  }}
-                                >
-                                  <IconEngineFilled
-                                    color={
-                                      devices?.find(
-                                        (m) => m.id == vehiculoActual
-                                      )?.attributes?.ignition
-                                        ? "green"
-                                        : "red"
-                                    }
-                                    size={16}
-                                  />
-                                </Box>
-                              </Typography>
-                            </Stack>
-                          </Grid>
-                          <Grid item xs={12}>
-                            <Stack
-                              direction="row"
-                              spacing={1}
-                              alignItems={"center"}
-                            >
-                              <Typography
-                                variant={"caption"}
-                                sx={{ fontWeight: "bold" }}
-                              >
-                                Última actualización:
-                              </Typography>
-                              <Typography variant={"caption"}>
-                                {restarCincoHoras(
-                                  devices.find((v) => v.id == vehiculoActual)
-                                    ?.lastUpdate || ""
-                                )}
-                              </Typography>
-                            </Stack>
-                          </Grid>
+                                <ArrowBack color="primary" fontSize="small" />
+                              </Box>
+                            </Typography>
+                          </Stack>
                         </Grid>
-                      </Box>
-                    </Stack>
-                  </Paper>
-                </Draggable>
-              </Box>
-            )}
-          </Box>
-        )}
-      </Box>
+                        <Grid item xs={6} md={6}>
+                          <Stack
+                            direction="row"
+                            spacing={1}
+                            alignItems={"center"}
+                          >
+                            <Typography
+                              variant={"caption"}
+                              sx={{ fontWeight: "bold" }}
+                            >
+                              Motor:
+                            </Typography>
+                            <Typography variant={"caption"}>
+                              <Box
+                                sx={{
+                                  display: "flex",
+                                  alignItems: "center",
+                                  justifyContent: "center",
+                                }}
+                              >
+                                <IconEngineFilled
+                                  color={
+                                    devices?.find((m) => m.id == vehiculoActual)
+                                      ?.attributes?.ignition
+                                      ? "green"
+                                      : "red"
+                                  }
+                                  size={16}
+                                />
+                              </Box>
+                            </Typography>
+                          </Stack>
+                        </Grid>
+                        <Grid item xs={12}>
+                          <Stack
+                            direction="row"
+                            spacing={1}
+                            alignItems={"center"}
+                          >
+                            <Typography
+                              variant={"caption"}
+                              sx={{ fontWeight: "bold" }}
+                            >
+                              Última actualización:
+                            </Typography>
+                            <Typography variant={"caption"}>
+                              {restarCincoHoras(
+                                devices.find((v) => v.id == vehiculoActual)
+                                  ?.lastUpdate || ""
+                              )}
+                            </Typography>
+                          </Stack>
+                        </Grid>
+                      </Grid>
+                    </Box>
+                  </Stack>
+                </Paper>
+              </Draggable>
+            </Box>
+          )}
+        </Box>
+      )}
 
       {/* Error message as a snackbar */}
       <Snackbar

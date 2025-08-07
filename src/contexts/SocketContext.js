@@ -30,6 +30,7 @@ export const WebSocketProvider = ({ children }) => {
   const [alertImage, setAlertImage] = useState(null);
   const [isBlinking, setIsBlinking] = useState(false);
   const [alertType, setAlertType] = useState(""); // 'sos', 'alarm', 'info'
+  const [vehiculoActual, setVehiculoActual] = useState(null);
 
   const alertTimeoutRef = useRef(null);
 
@@ -301,28 +302,6 @@ export const WebSocketProvider = ({ children }) => {
     }
   };
 
-  /**
-   * Combina un estado actual de dispositivos con una nueva lista.
-   * @param {Array<Object>} currentDevices - El array actual de dispositivos.
-   * @param {Array<Object>} newDevicesUpdate - El nuevo array con las actualizaciones.
-   * @returns {Array<Object>} Un nuevo array con los dispositivos combinados.
-   */
-  function mergeDeviceUpdates(currentDevices, newDevicesUpdate) {
-    const deviceMap = new Map(
-      currentDevices.map((device) => [device.id, device])
-    );
-
-    for (const newDeviceData of newDevicesUpdate) {
-      // Si el dispositivo ya existe, combina sus datos. Si no, lo añade.
-      // Usamos el spread operator para asegurarnos de que si llegan propiedades parciales,
-      // no se pierda el resto de la información del objeto.
-      const existingDevice = deviceMap.get(newDeviceData.id) || {};
-      deviceMap.set(newDeviceData.id, { ...existingDevice, ...newDeviceData });
-    }
-
-    return Array.from(deviceMap.values());
-  }
-
   return (
     <WebSocketContext.Provider
       value={{
@@ -335,6 +314,8 @@ export const WebSocketProvider = ({ children }) => {
         alertImage,
         alertType,
         handleCloseAlert,
+        vehiculoActual,
+        setVehiculoActual,
       }}
     >
       {children}
