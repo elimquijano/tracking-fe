@@ -14,7 +14,11 @@ import {
   InputLabel,
 } from "@mui/material";
 import { useParams } from "react-router-dom";
-import { getTraccar } from "../utils/common";
+import {
+  getTraccar,
+  postTraccar,
+  delTraccarWithPayload,
+} from "../utils/common";
 import { theme } from "../theme/theme";
 
 const categorias = [
@@ -132,7 +136,31 @@ export const DispositivoDetailPage = () => {
               options={drivers}
               value={drivers.filter((driver) => driversIds.includes(driver.id))}
               onChange={(event, newValue) => {
-                setDriversIds(newValue.map((driver) => driver.id));
+                const newDriverIds = newValue.map((driver) => driver.id);
+                const oldDriverIds = driversIds;
+
+                const added = newDriverIds.filter(
+                  (id) => !oldDriverIds.includes(id)
+                );
+                const removed = oldDriverIds.filter(
+                  (id) => !newDriverIds.includes(id)
+                );
+
+                added.forEach((driverId) => {
+                  postTraccar("permissions", {
+                    deviceId: parseInt(id),
+                    driverId: driverId,
+                  });
+                });
+
+                removed.forEach((driverId) => {
+                  delTraccarWithPayload("permissions", {
+                    deviceId: parseInt(id),
+                    driverId: driverId,
+                  });
+                });
+
+                setDriversIds(newDriverIds);
               }}
               getOptionLabel={(option) => option.name}
               renderTags={(value, getTagProps) =>
