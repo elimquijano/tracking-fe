@@ -37,6 +37,8 @@ import {
   Article,
   Map,
   DirectionsBus,
+  Place,
+  TrendingUp,
 } from "@mui/icons-material";
 import { GeozonasPage } from "../pages/GeozonasPage";
 import { HistorialDeRecorridoPage } from "../pages/HistorialRecorridoPage";
@@ -97,6 +99,8 @@ export const iconMap = {
   Map: <Map />,
   Article: <Article />,
   Bus: <DirectionsBus />,
+  Place: <Place />,
+  TrendingUp: <TrendingUp />,
 };
 
 // Función para obtener icono por nombre

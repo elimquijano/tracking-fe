@@ -2,24 +2,19 @@ import React, { useEffect, useState } from "react";
 import {
   Box,
   TextField,
-  MenuItem,
   Button,
   Typography,
   Container,
   Paper,
   Autocomplete,
   FormControl,
-  Select,
   Chip,
-  InputLabel,
 } from "@mui/material";
 import { useParams } from "react-router-dom";
-import {
-  getTraccar,
-  postTraccar,
-  delTraccarWithPayload,
-} from "../utils/common";
+import { useNavigate } from "react-router-dom";
+import { getTraccar, postTraccar, delTraccarWithPayload, updateTraccar } from "../utils/common";
 import { theme } from "../theme/theme";
+import { notificationSwal } from "../utils/swal-helpers";
 
 const categorias = [
   { id: "default", name: "Predeterminado" },
@@ -48,6 +43,7 @@ const categorias = [
 
 export const DispositivoDetailPage = () => {
   const { id } = useParams();
+  const navigate = useNavigate();
   const [device, setDevice] = useState({});
   const [drivers, setDrivers] = useState([]);
   const [driversIds, setDriversIds] = useState([]);
@@ -212,13 +208,21 @@ export const DispositivoDetailPage = () => {
           <Box
             sx={{ display: "flex", justifyContent: "center", mt: 3, gap: 2 }}
           >
-            <Button variant="contained" sx={{ backgroundColor: "#757072ff" }}>
+            <Button variant="contained" sx={{ backgroundColor: "#757072ff" }} onClick={() => navigate(-1)}>
               Cancelar
             </Button>
             <Button
               variant="contained"
               sx={{ backgroundColor: theme.palette.primary.main }}
-            >
+              onClick={async () => {
+                try {
+                  await updateTraccar(`devices/${id}`, device);
+                  notificationSwal("Éxito", "Dispositivo actualizado correctamente", "success");
+                  navigate(-1);
+                } catch (error) {
+                  notificationSwal("Error", "No se pudo actualizar el dispositivo", "error");
+                }
+              }}>
               Guardar
             </Button>
           </Box>

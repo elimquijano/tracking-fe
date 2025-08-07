@@ -96,7 +96,12 @@ const getIconUrl = (category) => {
 };
 
 // Componente simple para controlar el mapa
-const MapController = ({ vehiculoActual, marcadores, setVehiculoActual }) => {
+const MapController = ({
+  vehiculoActual,
+  marcadores,
+  setVehiculoActual,
+  setShowTable,
+}) => {
   const map = useMap();
 
   useEffect(() => {
@@ -104,6 +109,7 @@ const MapController = ({ vehiculoActual, marcadores, setVehiculoActual }) => {
       // Si el clic no es en un marcador, deselecciona el vehículo
       if (e.originalEvent.target.classList.contains("leaflet-container")) {
         setVehiculoActual(null);
+        setShowTable(true);
       }
     };
 
@@ -457,6 +463,7 @@ export const MapaPage = () => {
           expires_at: expirationDate,
           usuario: username,
           contraseña: password,
+          enviar_link: shareWithContacts
         });
 
         const requestOptions = {
@@ -796,6 +803,7 @@ export const MapaPage = () => {
                 vehiculoActual={vehiculoActual}
                 marcadores={marcadores}
                 setVehiculoActual={setVehiculoActual}
+                setShowTable={setShowTable}
               />
 
               {/* Renderizado DIRECTO de vehículos - Como Traccar */}
@@ -955,7 +963,10 @@ export const MapaPage = () => {
                         </Typography>
                         <Button
                           color="primary"
-                          onClick={() => setVehiculoActual(null)}
+                          onClick={() => {
+                            setVehiculoActual(null);
+                            setShowTable(true);
+                          }}
                           sx={{ minWidth: "auto", zIndex: 1001 }}
                         >
                           <Close fontSize={isMd ? "medium" : "small"} />
