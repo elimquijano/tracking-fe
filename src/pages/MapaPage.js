@@ -463,7 +463,7 @@ export const MapaPage = () => {
           expires_at: expirationDate,
           usuario: username,
           contraseña: password,
-          enviar_link: shareWithContacts
+          link: shareWithContacts ? window.location.origin : null,
         });
 
         const requestOptions = {
