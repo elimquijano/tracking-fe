@@ -42,7 +42,7 @@ import { columnsTPositionsList } from "../utils/ExportColumns";
 import RotatedMarker from "../components/RotatedMarker";
 import { exportToExcel } from "../utils/exportToExcel";
 import { useParams } from "react-router-dom";
-import { useTheme } from "../contexts/ThemeContext";
+import { useTheme } from '@mui/material/styles';
 
 const getIconUrl = (category) => {
   switch (category) {
@@ -536,8 +536,8 @@ export const HistorialDeRecorridoPage = () => {
           { color: "red", label: "Velocidad Alta" },
         ];
 
-        const textColor = theme?.palette?.text?.primary || '#212121'; // Fallback to a default dark color
-        const backgroundColor = theme?.palette?.background?.paper || 'white'; // Fallback to white
+        const textColor = theme.palette.text.primary; // Fallback to a default dark color
+        const backgroundColor = theme.palette.background.default; // Fallback to white
 
         let labels = [
           `<strong style="color: ${textColor};">Leyenda de Velocidad</strong>`,
@@ -549,7 +549,7 @@ export const HistorialDeRecorridoPage = () => {
           );
         });
 
-        div.innerHTML = labels.join('<br>');
+        div.innerHTML = labels.join("<br>");
         div.style.backgroundColor = backgroundColor;
         div.style.padding = "10px";
         div.style.borderRadius = "5px";
