@@ -36,7 +36,7 @@ import {
   Tune,
 } from "@mui/icons-material";
 import { Circle as LeafletCircle } from "react-leaflet";
-import { getTraccar } from "../utils/common";
+import { getTraccar, LOCATIONIQ_ACCESS_TOKEN } from "../utils/common";
 import { notificationSwal } from "../utils/swal-helpers";
 import { columnsTPositionsList } from "../utils/ExportColumns";
 import RotatedMarker from "../components/RotatedMarker";
@@ -239,6 +239,10 @@ export const HistorialDeRecorridoPage = () => {
         );
         to.setHours(23, 59, 59, 999);
         break;
+      case "custom":
+        from = new Date(searchFilter.from_date);
+        to = new Date(searchFilter.to_date);
+        break;
       default:
         from = new Date(todayReference);
         from.setHours(0, 0, 0, 0);
@@ -276,7 +280,7 @@ export const HistorialDeRecorridoPage = () => {
   }, [showForm]);
 
   function CleanFilter() {
-    setSearchFilter({ date_filter: "today" });
+    setSearchFilter({ date_filter: "today", from_date: "", to_date: "" });
   }
 
   function ValidacionItemSave(filter) {
@@ -294,6 +298,16 @@ export const HistorialDeRecorridoPage = () => {
       if (!filter.date_filter) {
         msgResponse += "* Debe seleccionar una fecha.<br>";
         response = false;
+      }
+      if (filter.date_filter === "custom") {
+        if (!filter.from_date) {
+          msgResponse += "* Debe seleccionar una fecha de inicio.<br>";
+          response = false;
+        }
+        if (!filter.to_date) {
+          msgResponse += "* Debe seleccionar una fecha de fin.<br>";
+          response = false;
+        }
       }
     }
 
@@ -497,7 +511,37 @@ export const HistorialDeRecorridoPage = () => {
                     <MenuItem value="this_week">Esta semana</MenuItem>
                     <MenuItem value="prev_week">Semana Anterior</MenuItem>
                     <MenuItem value="this_month">Este mes</MenuItem>
+                    <MenuItem value="custom">Personalizado</MenuItem>
                   </Select>
+
+                  {searchFilter.date_filter === "custom" && (
+                    <>
+                      <TextField
+                        label="Desde"
+                        type="datetime-local"
+                        name="from_date"
+                        value={searchFilter.from_date || ""}
+                        onChange={handleSearchChange}
+                        size="small"
+                        fullWidth
+                        InputLabelProps={{
+                          shrink: true,
+                        }}
+                      />
+                      <TextField
+                        label="Hasta"
+                        type="datetime-local"
+                        name="to_date"
+                        value={searchFilter.to_date || ""}
+                        onChange={handleSearchChange}
+                        size="small"
+                        fullWidth
+                        InputLabelProps={{
+                          shrink: true,
+                        }}
+                      />
+                    </>
+                  )}
 
                   <Button
                     fullWidth
@@ -637,6 +681,16 @@ export const HistorialDeRecorridoPage = () => {
                   url="http://{s}.google.com/vt/lyrs=p&x={x}&y={y}&z={z}"
                   subdomains={["mt0", "mt1", "mt2", "mt3"]}
                   maxZoom={20}
+                />
+              </BaseLayer>
+              <BaseLayer name="LocationIQ Streets">
+                <TileLayer
+                  url={`https://{s}-tiles.locationiq.com/v2/obk/r/{z}/{x}/{y}.png?key=${LOCATIONIQ_ACCESS_TOKEN}`}
+                />
+              </BaseLayer>
+              <BaseLayer name="LocationIQ Dark">
+                <TileLayer
+                  url={`https://{s}-tiles.locationiq.com/v2/dark/r/{z}/{x}/{y}.png?key=${LOCATIONIQ_ACCESS_TOKEN}`}
                 />
               </BaseLayer>
             </LayersControl>

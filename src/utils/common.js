@@ -8,6 +8,8 @@ export const API_HTTP_INTERCEPTOR =
   process.env.REACT_APP_URL_HTTP_INTERCEPTOR + "api/";
 
 export const GOOGLE_MAPS_API_KEY = process.env.REACT_APP_GOOGLE_MAPS_API_KEY;
+export const LOCATIONIQ_ACCESS_TOKEN =
+  process.env.REACT_APP_LOCATIONIQ_ACCESS_TOKEN;
 
 // Crear una sesión
 export function createSession(key, value) {
