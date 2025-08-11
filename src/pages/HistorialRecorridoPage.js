@@ -42,7 +42,8 @@ import { columnsTPositionsList } from "../utils/ExportColumns";
 import RotatedMarker from "../components/RotatedMarker";
 import { exportToExcel } from "../utils/exportToExcel";
 import { useParams } from "react-router-dom";
-import { useTheme } from '@mui/material/styles';
+import { useTheme } from "@mui/material/styles";
+import { useTheme as useCustomTheme } from "../contexts/ThemeContext";
 
 const getIconUrl = (category) => {
   switch (category) {
@@ -87,6 +88,7 @@ const getSpeedColor = (speed, speedLimit) => {
 
 export const HistorialDeRecorridoPage = () => {
   const { id } = useParams();
+  const { isDarkMode } = useCustomTheme();
   const [filteredRows, setFilteredRows] = useState([]);
   const [searchFilter, setSearchFilter] = useState({
     date_filter: "today",
@@ -756,7 +758,7 @@ export const HistorialDeRecorridoPage = () => {
             <ZoomControl position="bottomright" />
             <Legend />
             <LayersControl position="topright">
-              <BaseLayer checked name="Carto">
+              <BaseLayer checked={!isDarkMode} name="Carto">
                 <TileLayer url="https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png" />
               </BaseLayer>
               <BaseLayer name="OpenStreetMap">
@@ -795,7 +797,7 @@ export const HistorialDeRecorridoPage = () => {
                   url={`https://{s}-tiles.locationiq.com/v2/obk/r/{z}/{x}/{y}.png?key=${LOCATIONIQ_ACCESS_TOKEN}`}
                 />
               </BaseLayer>
-              <BaseLayer name="LocationIQ Dark">
+              <BaseLayer checked={isDarkMode} name="LocationIQ Dark">
                 <TileLayer
                   url={`https://{s}-tiles.locationiq.com/v2/dark/r/{z}/{x}/{y}.png?key=${LOCATIONIQ_ACCESS_TOKEN}`}
                 />

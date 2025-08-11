@@ -1,5 +1,6 @@
 import React, { useEffect, useState, useRef, useCallback } from "react";
 import {
+  LayersControl,
   MapContainer,
   TileLayer,
   Tooltip,
@@ -94,6 +95,8 @@ export const Landing = () => {
   const [loadingState, setLoadingState] = useState("connecting"); // connecting, connected, error
   const [vehiculoActual, setVehiculoActual] = useState(null);
   const wsRef = useRef(null);
+
+  const { BaseLayer } = LayersControl;
 
   // Use theme and media query for responsive layout
   const navigate = useNavigate();
@@ -285,10 +288,42 @@ export const Landing = () => {
             zoom={1}
             zoomControl={false}
           >
-            <TileLayer
-              url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-              attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
-            />
+            <LayersControl position="topright">
+              <BaseLayer name="Carto">
+                <TileLayer url="https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png" />
+              </BaseLayer>
+              <BaseLayer checked name="OpenStreetMap">
+                <TileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />
+              </BaseLayer>
+              <BaseLayer name="Google">
+                <TileLayer
+                  url="http://{s}.google.com/vt/lyrs=m&x={x}&y={y}&z={z}"
+                  subdomains={["mt0", "mt1", "mt2", "mt3"]}
+                  maxZoom={20}
+                />
+              </BaseLayer>
+              <BaseLayer name="Google Satélite">
+                <TileLayer
+                  url="http://{s}.google.com/vt/lyrs=s&x={x}&y={y}&z={z}"
+                  subdomains={["mt0", "mt1", "mt2", "mt3"]}
+                  maxZoom={20}
+                />
+              </BaseLayer>
+              <BaseLayer name="Google Híbrido">
+                <TileLayer
+                  url="http://{s}.google.com/vt/lyrs=s,h&x={x}&y={y}&z={z}"
+                  subdomains={["mt0", "mt1", "mt2", "mt3"]}
+                  maxZoom={20}
+                />
+              </BaseLayer>
+              <BaseLayer name="Google Relieve">
+                <TileLayer
+                  url="http://{s}.google.com/vt/lyrs=p&x={x}&y={y}&z={z}"
+                  subdomains={["mt0", "mt1", "mt2", "mt3"]}
+                  maxZoom={20}
+                />
+              </BaseLayer>
+            </LayersControl>
             <ZoomControl position="bottomleft" />
             <MapController
               vehiculoActual={vehiculoActual}

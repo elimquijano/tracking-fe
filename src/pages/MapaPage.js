@@ -58,6 +58,7 @@ import {
   decodeBase64,
   getSession,
   getTraccar,
+  LOCATIONIQ_ACCESS_TOKEN,
 } from "../utils/common";
 import { theme } from "../theme/theme";
 import { IconEngineFilled } from "@tabler/icons-react";
@@ -65,6 +66,7 @@ import RotatedMarker from "../components/RotatedMarker";
 import Draggable from "react-draggable";
 import { Link } from "react-router-dom";
 import { notificationSwal } from "../utils/swal-helpers";
+import { useTheme as useCustomTheme } from "../contexts/ThemeContext";
 
 // Configuración de iconos
 delete L.Icon.Default.prototype._getIconUrl;
@@ -157,6 +159,7 @@ const MapController = ({
 const columns = [{ id: "name", label: "Placa", minWidth: 5, key: 1 }];
 
 export const MapaPage = () => {
+  const { isDarkMode } = useCustomTheme();
   const [searchTerm, setSearchTerm] = useState("");
   const [showTable, setShowTable] = useState(true);
   const [vehiculos, setVehiculos] = useState([]);
@@ -749,26 +752,17 @@ export const MapaPage = () => {
               zoomControl={false}
             >
               <LayersControl position="topright">
-                <BaseLayer checked name="Google">
+                <BaseLayer name="Carto">
+                  <TileLayer url="https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png" />
+                </BaseLayer>
+                <BaseLayer name="OpenStreetMap">
+                  <TileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />
+                </BaseLayer>
+                <BaseLayer checked={!isDarkMode} name="Google">
                   <TileLayer
                     url="http://{s}.google.com/vt/lyrs=m&x={x}&y={y}&z={z}"
                     subdomains={["mt0", "mt1", "mt2", "mt3"]}
                     maxZoom={20}
-                    attribution="© Google"
-                  />
-                </BaseLayer>
-                <BaseLayer name="Carto Voyager">
-                  <TileLayer
-                    url="https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png"
-                    attribution='© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors © <a href="https://carto.com/attributions">CARTO</a>'
-                    subdomains={["a", "b", "c", "d"]}
-                    maxZoom={19}
-                  />
-                </BaseLayer>
-                <BaseLayer name="OpenStreetMap">
-                  <TileLayer
-                    url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-                    attribution='© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
                   />
                 </BaseLayer>
                 <BaseLayer name="Google Satélite">
@@ -776,7 +770,6 @@ export const MapaPage = () => {
                     url="http://{s}.google.com/vt/lyrs=s&x={x}&y={y}&z={z}"
                     subdomains={["mt0", "mt1", "mt2", "mt3"]}
                     maxZoom={20}
-                    attribution="© Google"
                   />
                 </BaseLayer>
                 <BaseLayer name="Google Híbrido">
@@ -784,7 +777,6 @@ export const MapaPage = () => {
                     url="http://{s}.google.com/vt/lyrs=s,h&x={x}&y={y}&z={z}"
                     subdomains={["mt0", "mt1", "mt2", "mt3"]}
                     maxZoom={20}
-                    attribution="© Google"
                   />
                 </BaseLayer>
                 <BaseLayer name="Google Relieve">
@@ -792,7 +784,16 @@ export const MapaPage = () => {
                     url="http://{s}.google.com/vt/lyrs=p&x={x}&y={y}&z={z}"
                     subdomains={["mt0", "mt1", "mt2", "mt3"]}
                     maxZoom={20}
-                    attribution="© Google"
+                  />
+                </BaseLayer>
+                <BaseLayer name="LocationIQ Streets">
+                  <TileLayer
+                    url={`https://{s}-tiles.locationiq.com/v2/obk/r/{z}/{x}/{y}.png?key=${LOCATIONIQ_ACCESS_TOKEN}`}
+                  />
+                </BaseLayer>
+                <BaseLayer checked={isDarkMode} name="LocationIQ Dark">
+                  <TileLayer
+                    url={`https://{s}-tiles.locationiq.com/v2/dark/r/{z}/{x}/{y}.png?key=${LOCATIONIQ_ACCESS_TOKEN}`}
                   />
                 </BaseLayer>
               </LayersControl>
