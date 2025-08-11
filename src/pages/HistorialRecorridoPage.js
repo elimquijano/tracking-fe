@@ -35,14 +35,14 @@ import {
   Search,
   Tune,
 } from "@mui/icons-material";
-import { Circle as LeafletCircle } from "react-leaflet";
+import { Circle as LeafletCircle, useMap } from "react-leaflet";
 import { getTraccar, LOCATIONIQ_ACCESS_TOKEN } from "../utils/common";
 import { notificationSwal } from "../utils/swal-helpers";
 import { columnsTPositionsList } from "../utils/ExportColumns";
 import RotatedMarker from "../components/RotatedMarker";
-import { theme } from "../theme/theme";
 import { exportToExcel } from "../utils/exportToExcel";
 import { useParams } from "react-router-dom";
+import { useTheme } from "../contexts/ThemeContext";
 
 const getIconUrl = (category) => {
   switch (category) {
@@ -65,6 +65,26 @@ const getIconUrl = (category) => {
   }
 };
 
+const getSpeedColor = (speed, speedLimit) => {
+  const speedKmh = speed * 1.852;
+  const speedLimitKmh = speedLimit ? speedLimit * 1.852 : 80; // Default speed limit 80 km/h
+
+  if (Math.abs(speedKmh) < 0.9) {
+    return "blue";
+  }
+
+  const lowSpeedThreshold = speedLimitKmh * 0.5; // 50% of speed limit
+  const mediumSpeedThreshold = speedLimitKmh; // 100% of speed limit
+
+  if (speedKmh <= lowSpeedThreshold) {
+    return "green";
+  }
+  if (speedKmh <= mediumSpeedThreshold) {
+    return "#ff9100ff"; // Orange
+  }
+  return "red";
+};
+
 export const HistorialDeRecorridoPage = () => {
   const { id } = useParams();
   const [filteredRows, setFilteredRows] = useState([]);
@@ -74,7 +94,7 @@ export const HistorialDeRecorridoPage = () => {
   const [totalItems, setTotalItems] = useState(0);
   const [vehiculos, setVehiculos] = useState([]);
   const [geocercas, setGeocercas] = useState([]);
-  const [posiciones, setPosiciones] = useState([]);
+  const [pathSegments, setPathSegments] = useState([]);
   const [isLoading, setIsLoading] = useState(false);
   const [positionActual, setPositionActual] = useState(0);
   const [showForm, setShowForm] = useState(true);
@@ -256,18 +276,56 @@ export const HistorialDeRecorridoPage = () => {
     };
   };
 
+  const [coloredTriangles, setColoredTriangles] = useState([]);
+
   useEffect(() => {
     setTotalItems(filteredRows.length);
-    setPosiciones(filteredRows.map((row) => [row.latitude, row.longitude]));
     if (filteredRows.length > 0) {
+      const device = vehiculos.find((v) => v.id === filteredRows[0].deviceId);
+      const speedLimit = device?.attributes?.speedLimit;
+
+      const segments = [];
+      const triangles = [];
+
+      for (let i = 0; i < filteredRows.length; i++) {
+        const currentPosition = filteredRows[i];
+        let triangleColor;
+
+        if (i === 0) {
+          triangleColor = getSpeedColor(currentPosition.speed, speedLimit);
+        } else {
+          // For subsequent triangles, color based on the speed of the segment ending at this point
+          triangleColor = getSpeedColor(currentPosition.speed, speedLimit);
+        }
+        triangles.push({ ...currentPosition, color: triangleColor });
+
+        if (i < filteredRows.length - 1) {
+          const nextPosition = filteredRows[i + 1];
+          // Line color determined by the speed of the next position
+          const segmentColor = getSpeedColor(nextPosition.speed, speedLimit);
+          segments.push({
+            positions: [
+              [currentPosition.latitude, currentPosition.longitude],
+              [nextPosition.latitude, nextPosition.longitude],
+            ],
+            color: segmentColor,
+          });
+        }
+      }
+      setPathSegments(segments);
+      setColoredTriangles(triangles);
+
       setMapCenter([
         filteredRows[positionActual].latitude,
         filteredRows[positionActual].longitude,
       ]);
       setMapZoom(14);
       setMapKey(Date.now());
+    } else {
+      setPathSegments([]);
+      setColoredTriangles([]);
     }
-  }, [filteredRows]);
+  }, [filteredRows, vehiculos]);
 
   useEffect(() => {
     if (showForm) {
@@ -462,6 +520,54 @@ export const HistorialDeRecorridoPage = () => {
     }
   };
 
+  const Legend = () => {
+    const map = useMap();
+    const theme = useTheme();
+
+    useEffect(() => {
+      const legend = L.control({ position: "bottomleft" });
+
+      legend.onAdd = () => {
+        const div = L.DomUtil.create("div", "info legend");
+        const grades = [
+          { color: "blue", label: "Detenido" },
+          { color: "green", label: "Velocidad Baja" },
+          { color: "#FFA500", label: "Velocidad Media" },
+          { color: "red", label: "Velocidad Alta" },
+        ];
+
+        const textColor = theme?.palette?.text?.primary || '#212121'; // Fallback to a default dark color
+        const backgroundColor = theme?.palette?.background?.paper || 'white'; // Fallback to white
+
+        let labels = [
+          `<strong style="color: ${textColor};">Leyenda de Velocidad</strong>`,
+        ];
+
+        grades.forEach((grade) => {
+          labels.push(
+            `<i style="background:${grade.color}; width: 18px; height: 18px; float: left; margin-right: 8px; opacity: 0.7;"></i> <span style="color: ${textColor};">${grade.label}</span>`
+          );
+        });
+
+        div.innerHTML = labels.join('<br>');
+        div.style.backgroundColor = backgroundColor;
+        div.style.padding = "10px";
+        div.style.borderRadius = "5px";
+        div.style.boxShadow = "0 0 15px rgba(0,0,0,0.2)";
+
+        return div;
+      };
+
+      legend.addTo(map);
+
+      return () => {
+        legend.remove();
+      };
+    }, [map, theme]);
+
+    return null;
+  };
+
   return (
     <Box sx={{ height: "100%" }}>
       <Paper
@@ -648,6 +754,7 @@ export const HistorialDeRecorridoPage = () => {
             zoomControl={false}
           >
             <ZoomControl position="bottomright" />
+            <Legend />
             <LayersControl position="topright">
               <BaseLayer checked name="Carto">
                 <TileLayer url="https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png" />
@@ -697,7 +804,7 @@ export const HistorialDeRecorridoPage = () => {
             {totalItems > 0 ? (
               <>
                 {/* Triángulos del historial - Estilo Traccar */}
-                {filteredRows.map((position, index) => {
+                {coloredTriangles.map((position, index) => {
                   const triangle = rotatePoints(
                     [position?.latitude, position?.longitude],
                     position?.course
@@ -707,8 +814,8 @@ export const HistorialDeRecorridoPage = () => {
                     <React.Fragment key={index}>
                       <Polygon
                         positions={triangle}
-                        color={theme.palette.primary.main}
-                        fillColor={theme.palette.primary.main}
+                        color={position.color}
+                        fillColor={position.color}
                         fillOpacity={0.8}
                         weight={2}
                         interactive={true}
@@ -758,12 +865,15 @@ export const HistorialDeRecorridoPage = () => {
                 </RotatedMarker>
 
                 {/* Línea de la ruta */}
-                <Polyline
-                  positions={posiciones}
-                  color={theme.palette.primary.main}
-                  weight={3}
-                  opacity={0.7}
-                />
+                {pathSegments.map((segment, index) => (
+                  <Polyline
+                    key={index}
+                    positions={segment.positions}
+                    color={segment.color}
+                    weight={3}
+                    opacity={0.7}
+                  />
+                ))}
               </>
             ) : (
               <div className="alert alert-warning" role="alert">
