@@ -292,10 +292,10 @@ export const Landing = () => {
               <BaseLayer name="Carto">
                 <TileLayer url="https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png" />
               </BaseLayer>
-              <BaseLayer checked name="OpenStreetMap">
+              <BaseLayer name="OpenStreetMap">
                 <TileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />
               </BaseLayer>
-              <BaseLayer name="Google">
+              <BaseLayer checked name="Google">
                 <TileLayer
                   url="http://{s}.google.com/vt/lyrs=m&x={x}&y={y}&z={z}"
                   subdomains={["mt0", "mt1", "mt2", "mt3"]}
