@@ -436,7 +436,7 @@ export const Landing = () => {
                             <Typography variant={"caption"}>
                               {Number(
                                 devices?.find((m) => m.id == vehiculoActual)
-                                  ?.speed || 0
+                                  ?.speed * 1.852 || 0
                               ).toFixed(2)}{" "}
                               Km/h
                             </Typography>

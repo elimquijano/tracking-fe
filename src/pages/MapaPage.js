@@ -991,7 +991,7 @@ export const MapaPage = () => {
                                 {Number(
                                   marcadores?.find(
                                     (m) => m.deviceId === vehiculoActual
-                                  )?.speed || 0
+                                  )?.speed * 1.852 || 0
                                 ).toFixed(2)}{" "}
                                 Km/h
                               </Typography>
