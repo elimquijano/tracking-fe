@@ -70,7 +70,7 @@ const MapController = ({ vehiculoActual, marcadores }) => {
         map.flyTo([marcador.latitude, marcador.longitude], 15);
       }
     } else {
-      map.flyTo([-9.9306, -76.2422], 10); // Vista por defecto
+      map.flyTo([-9.9306, -76.2422], 17); // Vista por defecto
     }
   }, [vehiculoActual, map]);
 
@@ -78,10 +78,10 @@ const MapController = ({ vehiculoActual, marcadores }) => {
     if (marcadores?.length > 0) {
       const firstVehicle = marcadores[0];
       if (firstVehicle?.latitude && firstVehicle?.longitude) {
-        map.setView([firstVehicle.latitude, firstVehicle.longitude], 10);
+        map.setView([firstVehicle.latitude, firstVehicle.longitude], 17);
       }
     } else {
-      map.setView([-9.9306, -76.2422], 10); // Vista por defecto
+      map.setView([-9.9306, -76.2422], 17); // Vista por defecto
     }
   }, []);
 

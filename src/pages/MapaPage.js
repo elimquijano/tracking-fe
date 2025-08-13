@@ -421,6 +421,20 @@ export const MapaPage = () => {
 
   const getExpirationDate = () => {
     const now = new Date();
+
+    // Si la opción es 'personalizado', asumimos que customDate ya es un objeto Date
+    // y también le sumamos las 2 horas de ajuste.
+    if (selectedOption === "personalizado") {
+      // Es importante asegurarse que 'customDate' sea un objeto Date válido
+      if (customDate instanceof Date) {
+        const adjustedCustomDate = new Date(customDate);
+        adjustedCustomDate.setHours(adjustedCustomDate.getHours() + 2);
+        return adjustedCustomDate.toISOString().slice(0, 19).replace("T", " ");
+      }
+      // Si no es una fecha válida, puedes retornar el valor original o null
+      return customDate;
+    }
+
     switch (selectedOption) {
       case "15 min":
         now.setMinutes(now.getMinutes() + 15);
@@ -434,11 +448,13 @@ export const MapaPage = () => {
       case "1 dia":
         now.setDate(now.getDate() + 1);
         break;
-      case "personalizado":
-        return customDate;
       default:
         return null;
     }
+
+    // Suma 2 horas adicionales para ajustar la diferencia con el servidor
+    now.setHours(now.getHours() + 2);
+
     return now.toISOString().slice(0, 19).replace("T", " ");
   };
 
