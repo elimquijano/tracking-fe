@@ -50,6 +50,7 @@ import ResumenPage from "../pages/reportes/ResumenPage";
 import RutaPage from "../pages/reportes/RutaPage";
 import ConductoresPage from "../pages/ConductoresPage";
 import { DispositivoDetailPage } from "../pages/DispositivoDetailPage";
+import { HistorialComparativoPage } from "../pages/HistorialComparativoPage";
 
 // Mapeo de componentes - AQUÍ AGREGAS NUEVOS COMPONENTES
 export const componentMap = {
@@ -82,6 +83,7 @@ export const componentMap = {
   HistorialDeRecorridoPage,
   ConductoresPage,
   DispositivoDetailPage,
+  HistorialComparativoPage,
 };
 
 // Mapeo de iconos - AQUÍ TIENES TODOS LOS ICONOS DISPONIBLES
