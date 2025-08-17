@@ -920,11 +920,11 @@ export const MapaPage = () => {
                     marcadores?.find((m) => m.deviceId === vehiculoActual)
                       ?.longitude,
                   ]}
-                  radius={30}
+                  radius={25}
                   pathOptions={{
                     color: "rgba(0, 128, 0, 0.0)",
-                    fillColor: "rgba(141, 36, 170, 1)",
-                    fillOpacity: 0.2,
+                    fillColor: theme.palette.primary.main,
+                    fillOpacity: 0.3,
                   }}
                 />
               )}

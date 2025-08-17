@@ -179,6 +179,20 @@ const NotificationSection = () => {
           description: `El dispositivo del vehículo ${event.name} se ha conectado el ${formattedTime}`,
         };
         break;
+      case "deviceMoving":
+        parseEvent = {
+          ...parseEvent,
+          title: "Vehículo en movimiento",
+          description: `El vehículo ${event.name} ha comenzado a moverse el ${formattedTime}`,
+        };
+        break;
+      case "deviceStopped":
+        parseEvent = {
+          ...parseEvent,
+          title: "Vehículo detenido",
+          description: `El vehículo ${event.name} ha detenido su movimiento el ${formattedTime}`,
+        };
+        break;
       default:
         parseEvent = {
           ...parseEvent,
@@ -256,11 +270,7 @@ const NotificationSection = () => {
 
   return (
     <>
-      <IconButton
-        ref={anchorRef}
-        color="inherit"
-        onClick={handleToggle}
-      >
+      <IconButton ref={anchorRef} color="inherit" onClick={handleToggle}>
         <Badge
           badgeContent={
             filteredNotifications.filter(

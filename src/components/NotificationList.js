@@ -72,7 +72,8 @@ const NotificationList = ({ notifications = [] }) => {
       sx={{
         width: '100%',
         maxWidth: 330,
-        maxHeight: 500,
+        maxHeight: 400,
+        overflowY: 'auto',
         py: 0,
         borderRadius: '10px',
         [theme.breakpoints.down('md')]: {
