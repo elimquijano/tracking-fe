@@ -78,18 +78,6 @@ export const DispositivoDetailPage = () => {
     getDriverDevice();
   }, [id]);
 
-  useEffect(() => {
-    const selectedDrivers = drivers.filter((driver) =>
-      driversIds.includes(driver.id)
-    );
-    const uniqueIds = selectedDrivers
-      .map((driver) => driver.uniqueId)
-      .join(",");
-    setDevice((prev) => ({
-      ...prev,
-      contact: uniqueIds,
-    }));
-  }, [driversIds]);
   return (
     <Container component="main" maxWidth="sm">
       <Paper sx={{ p: 3 }}>
@@ -154,6 +142,45 @@ export const DispositivoDetailPage = () => {
                     deviceId: parseInt(id),
                     driverId: driverId,
                   });
+                });
+
+                // Update contact numbers based on selection
+                const selectedDriverNumbers = new Set(
+                  drivers
+                    .filter((driver) => newDriverIds.includes(driver.id))
+                    .map((driver) => driver.uniqueId)
+                );
+
+                const allDriverNumbers = new Set(
+                  drivers.map((driver) => driver.uniqueId)
+                );
+
+                setDevice((prevDevice) => {
+                  const currentContactNumbers = new Set(
+                    prevDevice.contact
+                      ? prevDevice.contact
+                          .split(",")
+                          .map((n) => n.trim())
+                          .filter(Boolean)
+                      : []
+                  );
+
+                  const manualNumbers = new Set(
+                    [...currentContactNumbers].filter(
+                      (num) => !allDriverNumbers.has(num)
+                    )
+                  );
+
+                  const newContactSet = new Set([
+                    ...manualNumbers,
+                    ...selectedDriverNumbers,
+                  ]);
+                  const newContactString = Array.from(newContactSet).join(",");
+
+                  return {
+                    ...prevDevice,
+                    contact: newContactString,
+                  };
                 });
 
                 setDriversIds(newDriverIds);
