@@ -49,6 +49,7 @@ import {
   History,
   Share,
   Tune,
+  SettingsRemote as SettingsRemoteIcon,
 } from "@mui/icons-material";
 import { Circle as LeafletCircle } from "react-leaflet";
 import { WebSocketContext } from "../contexts/SocketContext";
@@ -1182,10 +1183,7 @@ export const MapaPage = () => {
                             </Grid>
                           </Box>
                           <Box sx={{ padding: 1 }}>
-                            <Stack
-                              direction="row"
-                              justifyContent="space-between"
-                            >
+                            <Stack direction="row" justifyContent="space-around">
                               <IconButton
                                 size="small"
                                 component={Link}
@@ -1199,6 +1197,13 @@ export const MapaPage = () => {
                                 to={`/dashboard/transporte/historial/${vehiculoActual}`}
                               >
                                 <History />
+                              </IconButton>
+                              <IconButton
+                                size="small"
+                                component={Link}
+                                to={`/dashboard/transporte/comandos/${vehiculoActual}`}
+                              >
+                                <SettingsRemoteIcon />
                               </IconButton>
                               <IconButton
                                 size="small"
