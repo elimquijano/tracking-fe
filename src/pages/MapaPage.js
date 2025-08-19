@@ -162,7 +162,6 @@ const columns = [{ id: "name", label: "Placa", minWidth: 5, key: 1 }];
 export const MapaPage = () => {
   const { isDarkMode } = useCustomTheme();
   const [searchTerm, setSearchTerm] = useState("");
-  const [showTable, setShowTable] = useState(true);
   const [vehiculos, setVehiculos] = useState([]);
   const [marcadores, setMarcadores] = useState([]);
   const [filteredVehiculos, setFilteredVehiculos] = useState([]);
@@ -177,6 +176,7 @@ export const MapaPage = () => {
   const { devices, positions, vehiculoActual, setVehiculoActual } =
     useContext(WebSocketContext);
 
+  const [showTable, setShowTable] = useState(true);
   const [openDialog, setOpenDialog] = useState(false);
   const [isSharing, setIsSharing] = useState(false);
   const [shareWithContacts, setShareWithContacts] = useState(false);
@@ -201,6 +201,10 @@ export const MapaPage = () => {
     };
     initializeMap();
   }, []);
+
+  useEffect(() => {
+    setShowTable(vehiculoActual == null);
+  }, [vehiculoActual]);
 
   // Actualización de dispositivos (sin throttling para evitar lag)
   useEffect(() => {
@@ -406,6 +410,10 @@ export const MapaPage = () => {
     try {
       const result = await getTraccar("devices");
       setVehiculos(result.data);
+      if (result.data.length === 1) {
+        const firstVehicle = result.data[0];
+        setVehiculoActual(firstVehicle.id);
+      }
     } catch (error) {
       console.log("error: " + error);
     }
@@ -943,7 +951,7 @@ export const MapaPage = () => {
                   <Box
                     sx={{
                       position: "absolute",
-                      bottom: 5,
+                      bottom: 10,
                       width: "100%",
                       display: "flex",
                       justifyContent: "center",
@@ -1084,7 +1092,7 @@ export const MapaPage = () => {
                                     {Number(
                                       marcadores?.find(
                                         (m) => m.deviceId === vehiculoActual
-                                      )?.attributes?.totalDistance || 0
+                                      )?.attributes?.totalDistance / 1000 || 0
                                     ).toFixed(2)}{" "}
                                     km
                                   </Typography>
@@ -1149,8 +1157,7 @@ export const MapaPage = () => {
                                       <IconEngineFilled
                                         color={
                                           marcadores?.find(
-                                            (m) =>
-                                              m.deviceId === vehiculoActual
+                                            (m) => m.deviceId === vehiculoActual
                                           )?.attributes?.ignition
                                             ? "green"
                                             : "red"
@@ -1183,7 +1190,10 @@ export const MapaPage = () => {
                             </Grid>
                           </Box>
                           <Box sx={{ padding: 1 }}>
-                            <Stack direction="row" justifyContent="space-around">
+                            <Stack
+                              direction="row"
+                              justifyContent="space-around"
+                            >
                               <IconButton
                                 size="small"
                                 component={Link}

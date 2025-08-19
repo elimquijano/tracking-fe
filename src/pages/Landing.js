@@ -377,7 +377,7 @@ export const Landing = () => {
             <Box
               sx={{
                 position: "absolute",
-                bottom: 20,
+                bottom: 25,
                 width: "100%",
                 display: "flex",
                 justifyContent: "center",
@@ -391,7 +391,7 @@ export const Landing = () => {
                   sx={{
                     pointerEvents: "auto", // Reactiva eventos para el panel
                     borderRadius: 0,
-                    width: { xs: "calc(100% - 20px)", md: "480px" },
+                    width: { xs: "calc(100% - 50px)", md: "480px" },
                     margin: 0,
                     boxShadow: "0px 0px 15px rgba(0,0,0,0.2)",
                   }}
@@ -507,7 +507,7 @@ export const Landing = () => {
                             <Typography variant={"caption"}>
                               {Number(
                                 devices?.find((m) => m.id == vehiculoActual)
-                                  ?.attributes?.totalDistance || 0
+                                  ?.attributes?.totalDistance / 1000 || 0
                               ).toFixed(2)}{" "}
                               km
                             </Typography>
