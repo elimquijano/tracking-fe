@@ -40,6 +40,7 @@ import {
   FullscreenExit,
   ChevronLeft as ChevronLeftIcon,
   ChevronRight as ChevronRightIcon,
+  Notifications as NotificationsIcon,
 } from "@mui/icons-material";
 import { useNavigate, useLocation, Navigate } from "react-router-dom";
 import { useAuth } from "../contexts/AuthContext";
@@ -53,6 +54,10 @@ import Logo from "../components/Logo";
 import { confirmSwal } from "../utils/swal-helpers";
 import { createSession, getSession } from "../utils/common";
 import NotificationSection from "../components/NotificationSection";
+import {
+  requestAndLogToken,
+  NotificationListener,
+} from "../utils/notificationManager";
 
 const drawerWidth = 260;
 const collapsedDrawerWidth = 64;
@@ -457,7 +462,7 @@ export const DashboardLayout = () => {
             variant="h6"
             sx={{ fontWeight: 700, color: theme.palette.primary.main }}
           >
-            OASIS TECHNOLOGY
+            OASIS TRACKING
           </Typography>
         )}
       </Box>
@@ -493,6 +498,7 @@ export const DashboardLayout = () => {
 
   return (
     <WebSocketProvider>
+      <NotificationListener />
       <Box sx={{ display: "flex" }}>
         {/* Header */}
         <AppBar
@@ -631,7 +637,6 @@ export const DashboardLayout = () => {
                 <Box
                   sx={{
                     p: 2,
-                    borderBottom: `1px solid ${theme.palette.divider}`,
                   }}
                 >
                   <Typography variant="h6" sx={{ fontWeight: 600 }}>
@@ -641,7 +646,19 @@ export const DashboardLayout = () => {
                     {user?.roles?.[0]?.name || "User"}
                   </Typography>
                 </Box>
-
+                <Divider />
+                <MenuItem
+                  onClick={() => {
+                    handleClose();
+                    requestAndLogToken();
+                  }}
+                >
+                  <ListItemIcon>
+                    <NotificationsIcon fontSize="small" />
+                  </ListItemIcon>
+                  Activar Notificaciones Push
+                </MenuItem>
+                <Divider />
                 <Box sx={{ p: 2 }}>
                   <FormControlLabel
                     control={
