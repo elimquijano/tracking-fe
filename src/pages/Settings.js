@@ -164,7 +164,18 @@ export const Settings = () => {
 
   useEffect(() => {
     if (!userTraccar?.attributes?.notificationTokens) return;
-    setIsPushEnabled(true);
+    // validar si el token de este equipo esta o no en notificationTokens dentro de una funcion async
+    const isTokenActive = async () => {
+      const token = await requestAndLogToken();
+      if (!token) return false;
+      const notificationTokensString =
+        userTraccar.attributes?.notificationTokens || "";
+      const notificationTokens = notificationTokensString.split(",");
+      if (notificationTokens.includes(token)) {
+        setIsPushEnabled(true);
+      }
+    };
+    isTokenActive();
   }, [userTraccar]);
 
   const savePushToken = async (isEnabled) => {
@@ -193,7 +204,13 @@ export const Settings = () => {
       };
       await updateTraccar("users/" + userTraccar.id, newUser);
       setIsPushEnabled(isEnabled);
-      notificationSwal("Éxito", isEnabled ? "Token de notificación guardado" : "Token de notificación eliminado", "success");
+      notificationSwal(
+        "Éxito",
+        isEnabled
+          ? "Token de notificación guardado"
+          : "Token de notificación eliminado",
+        "success"
+      );
     } catch (error) {
       console.error("Error saving push token:", error);
     }

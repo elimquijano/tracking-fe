@@ -12,13 +12,13 @@ importScripts(
 // TODO: Reemplaza esto con la configuración de tu proyecto de Firebase.
 // ¡Debe ser la misma configuración que usas en tu app de React!
 const firebaseConfig = {
-  apiKey: process.env.REACT_APP_FIREBASE_API_KEY,
-  authDomain: process.env.REACT_APP_FIREBASE_AUTH_DOMAIN,
-  projectId: process.env.REACT_APP_FIREBASE_PROJECT_ID,
-  storageBucket: process.env.REACT_APP_FIREBASE_STORAGE_BUCKET,
-  messagingSenderId: process.env.REACT_APP_FIREBASE_MESSAGING_SENDER_ID,
-  appId: process.env.REACT_APP_FIREBASE_APP_ID,
-  measurementId: process.env.REACT_APP_FIREBASE_MEASUREMENT_ID
+  apiKey: "AIzaSyA5Sk7RbfMbOiIoq2KXpA1YLqNY10y4y0M",
+  authDomain: "oasis-tracking.firebaseapp.com",
+  projectId: "oasis-tracking",
+  storageBucket: "oasis-tracking.firebasestorage.app",
+  messagingSenderId: "603984811670",
+  appId: "1:603984811670:web:431585461353c417a1d4b7",
+  measurementId: "G-R06G704S22"
 };
 
 // Inicializar la app de Firebase en el service worker
