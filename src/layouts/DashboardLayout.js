@@ -55,7 +55,6 @@ import { confirmSwal } from "../utils/swal-helpers";
 import { createSession, getSession } from "../utils/common";
 import NotificationSection from "../components/NotificationSection";
 import {
-  requestAndLogToken,
   NotificationListener,
 } from "../utils/notificationManager";
 
@@ -646,18 +645,6 @@ export const DashboardLayout = () => {
                     {user?.roles?.[0]?.name || "User"}
                   </Typography>
                 </Box>
-                <Divider />
-                <MenuItem
-                  onClick={() => {
-                    handleClose();
-                    requestAndLogToken();
-                  }}
-                >
-                  <ListItemIcon>
-                    <NotificationsIcon fontSize="small" />
-                  </ListItemIcon>
-                  Activar Notificaciones Push
-                </MenuItem>
                 <Divider />
                 <Box sx={{ p: 2 }}>
                   <FormControlLabel

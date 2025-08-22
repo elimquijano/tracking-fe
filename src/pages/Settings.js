@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from "react";
 import {
   Box,
   Grid,
@@ -8,7 +8,6 @@ import {
   TextField,
   Button,
   Switch,
-  FormControlLabel,
   Divider,
   List,
   ListItem,
@@ -18,13 +17,25 @@ import {
   Chip,
   Tab,
   Tabs,
-} from '@mui/material';
+} from "@mui/material";
 import {
   Person as PersonIcon,
   Security as SecurityIcon,
   Notifications as NotificationsIcon,
   Palette as PaletteIcon,
-} from '@mui/icons-material';
+  NotificationsActive,
+  NotificationsOff,
+} from "@mui/icons-material";
+import {
+  API_URL_TRACCAR,
+  decodeBase64,
+  getSession,
+  updateTraccar,
+} from "../utils/common";
+import { UAParser } from "ua-parser-js";
+import { useTheme as useCustomTheme } from "../contexts/ThemeContext";
+import { requestAndLogToken } from "../utils/notificationManager";
+import { notificationSwal } from "../utils/swal-helpers";
 
 function TabPanel(props) {
   const { children, value, index, ...other } = props;
@@ -44,27 +55,25 @@ function TabPanel(props) {
 
 export const Settings = () => {
   const [tabValue, setTabValue] = useState(0);
-  const [profileData, setProfileData] = useState({
-    firstName: 'John',
-    lastName: 'Doe',
-    email: 'john@example.com',
-    phone: '+1 234 567 8900',
-    company: 'Oasis Inc.',
-    position: 'Administrator',
-  });
+  const [profileData, setProfileData] = useState({});
+  const [lastSession, setLastSession] = useState({});
+  const [userTraccar, setUserTraccar] = useState({});
+
+  const [isPushEnabled, setIsPushEnabled] = useState(false);
+  const { isDarkMode, toggleDarkMode } = useCustomTheme();
 
   const [notifications, setNotifications] = useState({
-    emailNotifications: true,
+    emailNotifications: false,
     pushNotifications: false,
-    smsNotifications: true,
+    smsNotifications: false,
     marketingEmails: false,
   });
 
   const [preferences, setPreferences] = useState({
-    darkMode: false,
-    language: 'en',
-    timezone: 'UTC-5',
-    dateFormat: 'MM/DD/YYYY',
+    darkMode: isDarkMode,
+    language: "es",
+    timezone: "UTC-5",
+    dateFormat: "MM/DD/YYYY",
   });
 
   const handleTabChange = (event, newValue) => {
@@ -72,24 +81,128 @@ export const Settings = () => {
   };
 
   const handleProfileChange = (field, value) => {
-    setProfileData(prev => ({ ...prev, [field]: value }));
+    setProfileData((prev) => ({ ...prev, [field]: value }));
   };
 
   const handleNotificationChange = (field, value) => {
-    setNotifications(prev => ({ ...prev, [field]: value }));
+    setNotifications((prev) => ({ ...prev, [field]: value }));
   };
 
   const tabs = [
-    { label: 'Profile', icon: <PersonIcon /> },
-    { label: 'Security', icon: <SecurityIcon /> },
-    { label: 'Notifications', icon: <NotificationsIcon /> },
-    { label: 'Preferences', icon: <PaletteIcon /> },
+    { label: "Perfil", icon: <PersonIcon /> },
+    { label: "Seguridad", icon: <SecurityIcon /> },
+    { label: "Notificaciones", icon: <NotificationsIcon /> },
+    { label: "Preferencias", icon: <PaletteIcon /> },
   ];
+
+  useEffect(() => {
+    setProfileData(getSession("user"));
+    const fetchUserTraccar = async () => {
+      const { username, password } = decodeBase64(getSession("SESSION_TOKEN"));
+      if (!username || !password) {
+        console.error("No se encontraron las credenciales de WebSocket");
+        return;
+      }
+      const myHeaders = new Headers();
+      myHeaders.append("Content-Type", "application/x-www-form-urlencoded");
+
+      const urlencoded = new URLSearchParams();
+      urlencoded.append("email", username);
+      urlencoded.append("password", password);
+
+      const requestOptions = {
+        method: "POST",
+        headers: myHeaders,
+        body: urlencoded,
+        redirect: "follow",
+      };
+
+      fetch(API_URL_TRACCAR + "session", requestOptions)
+        .then((response) => response.json())
+        .then((result) => {
+          setUserTraccar(result);
+        })
+        .catch((error) => console.error(error));
+    };
+    fetchUserTraccar();
+  }, []);
+
+  useEffect(() => {
+    if (!profileData?.last_login_at && !profileData?.last_login_ip) {
+      return;
+    }
+    // Parsear User-Agent
+    const parser = new UAParser();
+    const result = parser.getResult();
+    let infoSession = {
+      browser: result.browser.name || "Unknown Browser",
+      os: result.os.name || "Unknown OS",
+      location: "Unknown Location",
+      datetime: new Date(profileData.last_login_at).toLocaleString(),
+    };
+
+    // Obtener ubicación a partir de IP
+    async function fetchLocation() {
+      try {
+        const res = await fetch(
+          `https://ipapi.co/${profileData.last_login_ip}/json/`
+        );
+        if (!res.ok) throw new Error("Failed to fetch location");
+        const data = await res.json();
+        infoSession.location = `${data.city}, ${
+          data.region_code || data.region
+        }`;
+      } catch (error) {
+        infoSession.location = "Unknown Location";
+      } finally {
+        setLastSession(infoSession);
+      }
+    }
+
+    fetchLocation();
+  }, [profileData]);
+
+  useEffect(() => {
+    if (!userTraccar?.attributes?.notificationTokens) return;
+    setIsPushEnabled(true);
+  }, [userTraccar]);
+
+  const savePushToken = async (isEnabled) => {
+    if (!userTraccar?.id) {
+      console.error("No se encontró el ID de usuario de Traccar");
+      return;
+    }
+    const token = await requestAndLogToken();
+    if (!token) return;
+    try {
+      const notificationTokensString =
+        userTraccar.attributes?.notificationTokens || "";
+      let notificationTokens = notificationTokensString.split(",");
+      if (isEnabled) {
+        notificationTokens.push(token);
+      } else {
+        notificationTokens = notificationTokens.filter((t) => t !== token);
+      }
+      const newUser = {
+        ...userTraccar,
+
+        attributes: {
+          ...userTraccar.attributes,
+          notificationTokens: notificationTokens.join(","),
+        },
+      };
+      await updateTraccar("users/" + userTraccar.id, newUser);
+      setIsPushEnabled(isEnabled);
+      notificationSwal("Éxito", isEnabled ? "Token de notificación guardado" : "Token de notificación eliminado", "success");
+    } catch (error) {
+      console.error("Error saving push token:", error);
+    }
+  };
 
   return (
     <Box>
       <Typography variant="h4" sx={{ mb: 3, fontWeight: 600 }}>
-        Settings
+        Configuración
       </Typography>
 
       <Grid container spacing={3}>
@@ -101,7 +214,7 @@ export const Settings = () => {
                 variant="scrollable"
                 value={tabValue}
                 onChange={handleTabChange}
-                sx={{ borderRight: 1, borderColor: 'divider' }}
+                sx={{ borderRight: 1, borderColor: "divider" }}
               >
                 {tabs.map((tab, index) => (
                   <Tab
@@ -110,8 +223,8 @@ export const Settings = () => {
                     icon={tab.icon}
                     iconPosition="start"
                     sx={{
-                      justifyContent: 'flex-start',
-                      textAlign: 'left',
+                      justifyContent: "flex-start",
+                      textAlign: "left",
                       minHeight: 48,
                     }}
                   />
@@ -127,29 +240,34 @@ export const Settings = () => {
               {/* Profile Tab */}
               <TabPanel value={tabValue} index={0}>
                 <Typography variant="h6" sx={{ mb: 3, fontWeight: 600 }}>
-                  Profile Information
+                  Información del Perfil
                 </Typography>
-                
-                <Box sx={{ display: 'flex', alignItems: 'center', mb: 4 }}>
+
+                <Box sx={{ display: "flex", alignItems: "center", mb: 4 }}>
                   <Avatar
                     sx={{
                       width: 80,
                       height: 80,
                       mr: 3,
-                      bgcolor: 'primary.main',
-                      fontSize: '2rem',
+                      bgcolor: "primary.main",
+                      fontSize: "2rem",
                     }}
                   >
-                    {profileData.firstName.charAt(0)}{profileData.lastName.charAt(0)}
+                    {profileData.initials || ""}
                   </Avatar>
                   <Box>
                     <Typography variant="h6" sx={{ fontWeight: 600 }}>
-                      {profileData.firstName} {profileData.lastName}
+                      {profileData.full_name || ""}
                     </Typography>
-                    <Typography variant="body2" color="text.secondary">
-                      {profileData.position} at {profileData.company}
-                    </Typography>
-                    <Chip label="Administrator" color="primary" size="small" sx={{ mt: 1 }} />
+                    {profileData.roles?.map((role, index) => (
+                      <Chip
+                        key={index}
+                        label={role.name}
+                        color="primary"
+                        size="small"
+                        sx={{ mt: 1 }}
+                      />
+                    ))}
                   </Box>
                 </Box>
 
@@ -157,17 +275,23 @@ export const Settings = () => {
                   <Grid item xs={12} sm={6}>
                     <TextField
                       fullWidth
-                      label="First Name"
-                      value={profileData.firstName}
-                      onChange={(e) => handleProfileChange('firstName', e.target.value)}
+                      label="Nombres"
+                      type="text"
+                      value={profileData.first_name}
+                      onChange={(e) =>
+                        handleProfileChange("first_name", e.target.value)
+                      }
                     />
                   </Grid>
                   <Grid item xs={12} sm={6}>
                     <TextField
                       fullWidth
-                      label="Last Name"
-                      value={profileData.lastName}
-                      onChange={(e) => handleProfileChange('lastName', e.target.value)}
+                      label="Apellidos"
+                      type="text"
+                      value={profileData.last_name}
+                      onChange={(e) =>
+                        handleProfileChange("last_name", e.target.value)
+                      }
                     />
                   </Grid>
                   <Grid item xs={12} sm={6}>
@@ -176,113 +300,90 @@ export const Settings = () => {
                       label="Email"
                       type="email"
                       value={profileData.email}
-                      onChange={(e) => handleProfileChange('email', e.target.value)}
-                    />
-                  </Grid>
-                  <Grid item xs={12} sm={6}>
-                    <TextField
-                      fullWidth
-                      label="Phone"
-                      value={profileData.phone}
-                      onChange={(e) => handleProfileChange('phone', e.target.value)}
-                    />
-                  </Grid>
-                  <Grid item xs={12} sm={6}>
-                    <TextField
-                      fullWidth
-                      label="Company"
-                      value={profileData.company}
-                      onChange={(e) => handleProfileChange('company', e.target.value)}
-                    />
-                  </Grid>
-                  <Grid item xs={12} sm={6}>
-                    <TextField
-                      fullWidth
-                      label="Position"
-                      value={profileData.position}
-                      onChange={(e) => handleProfileChange('position', e.target.value)}
+                      onChange={(e) =>
+                        handleProfileChange("email", e.target.value)
+                      }
                     />
                   </Grid>
                 </Grid>
 
                 <Box sx={{ mt: 3 }}>
-                  <Button variant="contained">Save Changes</Button>
-                  <Button variant="outlined" sx={{ ml: 2 }}>Cancel</Button>
+                  <Button variant="contained">Guardar Cambios</Button>
+                  <Button variant="outlined" sx={{ ml: 2 }}>
+                    Cancelar
+                  </Button>
                 </Box>
               </TabPanel>
 
               {/* Security Tab */}
               <TabPanel value={tabValue} index={1}>
                 <Typography variant="h6" sx={{ mb: 3, fontWeight: 600 }}>
-                  Security Settings
+                  Configuración de Seguridad
                 </Typography>
 
                 <Box sx={{ mb: 4 }}>
-                  <Typography variant="subtitle1" sx={{ mb: 2, fontWeight: 600 }}>
-                    Change Password
+                  <Typography
+                    variant="subtitle1"
+                    sx={{ mb: 2, fontWeight: 600 }}
+                  >
+                    Cambiar Contraseña
                   </Typography>
                   <Grid container spacing={2}>
                     <Grid item xs={12}>
                       <TextField
                         fullWidth
-                        label="Current Password"
+                        label="Contraseña Actual"
                         type="password"
                       />
                     </Grid>
                     <Grid item xs={12} sm={6}>
                       <TextField
                         fullWidth
-                        label="New Password"
+                        label="Nueva Contraseña"
                         type="password"
                       />
                     </Grid>
                     <Grid item xs={12} sm={6}>
                       <TextField
                         fullWidth
-                        label="Confirm New Password"
+                        label="Confirmar Nueva Contraseña"
                         type="password"
                       />
                     </Grid>
                   </Grid>
                   <Button variant="contained" sx={{ mt: 2 }}>
-                    Update Password
+                    Actualizar Contraseña
                   </Button>
                 </Box>
 
                 <Divider sx={{ my: 3 }} />
 
                 <Typography variant="subtitle1" sx={{ mb: 2, fontWeight: 600 }}>
-                  Two-Factor Authentication
+                  Autenticación de Dos Factores
                 </Typography>
-                <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
+                <Box sx={{ display: "flex", alignItems: "center", mb: 2 }}>
                   <Switch />
                   <Typography sx={{ ml: 2 }}>
-                    Enable two-factor authentication for enhanced security
+                    Habilitar la autenticación de dos factores para una mayor
+                    seguridad
                   </Typography>
                 </Box>
 
                 <Divider sx={{ my: 3 }} />
 
                 <Typography variant="subtitle1" sx={{ mb: 2, fontWeight: 600 }}>
-                  Active Sessions
+                  Sesiones Activas
                 </Typography>
                 <List>
                   <ListItem>
                     <ListItemText
-                      primary="Current Session"
-                      secondary="Chrome on Windows • New York, NY"
+                      primary={lastSession.datetime || "Desconocido"}
+                      secondary={`${lastSession.browser || "Desconocido"} en ${
+                        lastSession.os || "Desconocido"
+                      } • ${lastSession.location || "Desconocido"}`}
                     />
                     <ListItemSecondaryAction>
-                      <Chip label="Active" color="success" size="small" />
-                    </ListItemSecondaryAction>
-                  </ListItem>
-                  <ListItem>
-                    <ListItemText
-                      primary="Mobile App"
-                      secondary="iPhone • Last active 2 hours ago"
-                    />
-                    <ListItemSecondaryAction>
-                      <Button size="small" color="error">Revoke</Button>
+                      <Chip label="Activo" color="success" size="small" />
                     </ListItemSecondaryAction>
                   </ListItem>
                 </List>
@@ -291,58 +392,134 @@ export const Settings = () => {
               {/* Notifications Tab */}
               <TabPanel value={tabValue} index={2}>
                 <Typography variant="h6" sx={{ mb: 3, fontWeight: 600 }}>
-                  Notification Preferences
+                  Configuración de Notificaciones
                 </Typography>
 
                 <List>
                   <ListItem>
                     <ListItemText
-                      primary="Email Notifications"
-                      secondary="Receive notifications via email"
+                      primary="Notificaciones Push"
+                      secondary="Recibir notificaciones push en tu navegador"
+                    />
+                  </ListItem>
+                </List>
+
+                <Card
+                  sx={{
+                    maxWidth: 400,
+                    margin: "auto",
+                    boxShadow: 3,
+                    borderRadius: 2,
+                    overflow: "hidden",
+                  }}
+                >
+                  <CardContent sx={{ textAlign: "center", p: 3 }}>
+                    <Box sx={{ mb: 2 }}>
+                      {isPushEnabled ? (
+                        <NotificationsActive
+                          color="success"
+                          sx={{ fontSize: 60 }}
+                        />
+                      ) : (
+                        <NotificationsOff
+                          color="disabled"
+                          sx={{ fontSize: 60 }}
+                        />
+                      )}
+                    </Box>
+
+                    <Typography variant="body1" sx={{ mb: 2 }}>
+                      {isPushEnabled
+                        ? "¡Las notificaciones están activadas! Recibirás alertas importantes."
+                        : "Activa las notificaciones para no perderte alertas importantes"}
+                    </Typography>
+
+                    <Button
+                      variant="contained"
+                      fullWidth
+                      onClick={() => savePushToken(!isPushEnabled)}
+                      startIcon={
+                        isPushEnabled ? (
+                          <NotificationsOff />
+                        ) : (
+                          <NotificationsActive />
+                        )
+                      }
+                      sx={{
+                        backgroundColor: isPushEnabled
+                          ? "error.main"
+                          : "primary.main",
+                        "&:hover": {
+                          backgroundColor: isPushEnabled
+                            ? "error.dark"
+                            : "primary.dark",
+                        },
+                      }}
+                    >
+                      {isPushEnabled
+                        ? "DESACTIVAR NOTIFICACIONES"
+                        : "ACTIVAR NOTIFICACIONES"}
+                    </Button>
+
+                    <Typography variant="caption" color="text.secondary">
+                      {isPushEnabled
+                        ? "Puedes desactivarlas en cualquier momento"
+                        : "Necesitamos tu permiso para enviar notificaciones"}
+                    </Typography>
+                  </CardContent>
+                </Card>
+
+                <List>
+                  <ListItem>
+                    <ListItemText
+                      primary="Notificaciones por Email"
+                      secondary="Recibir notificaciones por email"
                     />
                     <ListItemSecondaryAction>
                       <Switch
                         checked={notifications.emailNotifications}
-                        onChange={(e) => handleNotificationChange('emailNotifications', e.target.checked)}
+                        onChange={(e) =>
+                          handleNotificationChange(
+                            "emailNotifications",
+                            e.target.checked
+                          )
+                        }
                       />
                     </ListItemSecondaryAction>
                   </ListItem>
-                  
+
                   <ListItem>
                     <ListItemText
-                      primary="Push Notifications"
-                      secondary="Receive push notifications in your browser"
-                    />
-                    <ListItemSecondaryAction>
-                      <Switch
-                        checked={notifications.pushNotifications}
-                        onChange={(e) => handleNotificationChange('pushNotifications', e.target.checked)}
-                      />
-                    </ListItemSecondaryAction>
-                  </ListItem>
-                  
-                  <ListItem>
-                    <ListItemText
-                      primary="SMS Notifications"
-                      secondary="Receive important updates via SMS"
+                      primary="Notificaciones por SMS"
+                      secondary="Recibir actualizaciones importantes por SMS"
                     />
                     <ListItemSecondaryAction>
                       <Switch
                         checked={notifications.smsNotifications}
-                        onChange={(e) => handleNotificationChange('smsNotifications', e.target.checked)}
+                        onChange={(e) =>
+                          handleNotificationChange(
+                            "smsNotifications",
+                            e.target.checked
+                          )
+                        }
                       />
                     </ListItemSecondaryAction>
                   </ListItem>
-                  
+
                   <ListItem>
                     <ListItemText
-                      primary="Marketing Emails"
-                      secondary="Receive marketing and promotional emails"
+                      primary="Notificaciones de Marketing"
+                      secondary="Recibir correos electrónicos de marketing y promociones"
                     />
                     <ListItemSecondaryAction>
                       <Switch
                         checked={notifications.marketingEmails}
-                        onChange={(e) => handleNotificationChange('marketingEmails', e.target.checked)}
+                        onChange={(e) =>
+                          handleNotificationChange(
+                            "marketingEmails",
+                            e.target.checked
+                          )
+                        }
                       />
                     </ListItemSecondaryAction>
                   </ListItem>
@@ -352,58 +529,83 @@ export const Settings = () => {
               {/* Preferences Tab */}
               <TabPanel value={tabValue} index={3}>
                 <Typography variant="h6" sx={{ mb: 3, fontWeight: 600 }}>
-                  Application Preferences
+                  Configuración de la Aplicación
                 </Typography>
 
                 <Grid container spacing={3}>
                   <Grid item xs={12}>
-                    <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                    <Box
+                      sx={{
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "space-between",
+                      }}
+                    >
                       <Box>
-                        <Typography variant="subtitle1" sx={{ fontWeight: 600 }}>
-                          Dark Mode
+                        <Typography
+                          variant="subtitle1"
+                          sx={{ fontWeight: 600 }}
+                        >
+                          Modo Oscuro
                         </Typography>
                         <Typography variant="body2" color="text.secondary">
-                          Switch between light and dark themes
+                          Cambiar entre temas claros y oscuros
                         </Typography>
                       </Box>
                       <Switch
-                        checked={preferences.darkMode}
-                        onChange={(e) => setPreferences(prev => ({ ...prev, darkMode: e.target.checked }))}
+                        checked={isDarkMode}
+                        onChange={toggleDarkMode}
+                        color="primary"
                       />
                     </Box>
                   </Grid>
-                  
+
                   <Grid item xs={12} sm={6}>
                     <TextField
                       fullWidth
-                      label="Language"
+                      label="Idioma"
                       value={preferences.language}
-                      onChange={(e) => setPreferences(prev => ({ ...prev, language: e.target.value }))}
+                      onChange={(e) =>
+                        setPreferences((prev) => ({
+                          ...prev,
+                          language: e.target.value,
+                        }))
+                      }
                       select
                       SelectProps={{ native: true }}
                     >
-                      <option value="en">English</option>
-                      <option value="es">Spanish</option>
-                      <option value="fr">French</option>
-                      <option value="de">German</option>
+                      <option value="en">Inglés</option>
+                      <option value="es">Español</option>
+                      <option value="fr">Francés</option>
+                      <option value="de">Alemán</option>
                     </TextField>
                   </Grid>
-                  
+
                   <Grid item xs={12} sm={6}>
                     <TextField
                       fullWidth
-                      label="Timezone"
+                      label="Zona Horaria"
                       value={preferences.timezone}
-                      onChange={(e) => setPreferences(prev => ({ ...prev, timezone: e.target.value }))}
+                      onChange={(e) =>
+                        setPreferences((prev) => ({
+                          ...prev,
+                          timezone: e.target.value,
+                        }))
+                      }
                     />
                   </Grid>
-                  
+
                   <Grid item xs={12} sm={6}>
                     <TextField
                       fullWidth
-                      label="Date Format"
+                      label="Formato de Fecha"
                       value={preferences.dateFormat}
-                      onChange={(e) => setPreferences(prev => ({ ...prev, dateFormat: e.target.value }))}
+                      onChange={(e) =>
+                        setPreferences((prev) => ({
+                          ...prev,
+                          dateFormat: e.target.value,
+                        }))
+                      }
                       select
                       SelectProps={{ native: true }}
                     >
@@ -415,8 +617,10 @@ export const Settings = () => {
                 </Grid>
 
                 <Box sx={{ mt: 3 }}>
-                  <Button variant="contained">Save Preferences</Button>
-                  <Button variant="outlined" sx={{ ml: 2 }}>Reset to Default</Button>
+                  <Button variant="contained">Guardar Preferencias</Button>
+                  <Button variant="outlined" sx={{ ml: 2 }}>
+                    Restablecer a Predeterminado
+                  </Button>
                 </Box>
               </TabPanel>
             </CardContent>

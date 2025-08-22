@@ -4,7 +4,7 @@ import { getToken, onMessage } from "firebase/messaging";
 import { messaging } from "../firebase";
 
 /**
- * Solicita permiso para notificaciones y, si se concede, obtiene y muestra el token de FCM en la consola.
+ * Solicita permiso para notificaciones y, si se concede, obtiene y retorna el token de FCM.
  * Muestra alertas para informar al usuario sobre el proceso.
  */
 export const requestAndLogToken = async () => {
@@ -16,13 +16,14 @@ export const requestAndLogToken = async () => {
       const token = await getToken(messaging, {
         vapidKey: process.env.REACT_APP_VAPID_KEY,
       });
-
-      console.log("TOKEN DEL DISPOSITIVO:", token);
+      return token;
     } else {
       console.log("Permiso de notificación denegado.");
+      return null;
     }
   } catch (error) {
     console.error("Ocurrió un error al obtener el token:", error);
+    return null;
   }
 };
 
